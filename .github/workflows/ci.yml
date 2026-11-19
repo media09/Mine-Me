@@ -32,6 +32,8 @@ jobs:
         run: npm run typecheck
       - name: Mining protocol and RandomX vector tests
         run: npm test
+      - name: Pool gateway token and protocol tests
+        run: npm run test:gateway
       - name: Production build
         run: npm run build
         env:
