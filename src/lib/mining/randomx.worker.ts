@@ -174,7 +174,6 @@ self.onmessage = (message: MessageEvent<RandomXWorkerCommand>) => {
           break;
 
         case "pause":
-          nonceExhausted = false;
           paused = true;
           emit({ type: "paused" });
           break;
