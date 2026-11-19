@@ -19,6 +19,7 @@ Copy `.env.example` to a protected server-only environment file. Set:
 - `MINING_GATEWAY_TOKEN_SECRET` to a high-entropy secret of at least 32 bytes. Use the exact same value in the Next.js server environment.
 - `ALLOWED_WEB_ORIGINS=https://app.sharedboost.com`.
 - `POOL_PROXY_HOST=127.0.0.1` and `POOL_PROXY_PORT=3333`.
+- Set `TRUST_PROXY_HEADERS=true` only when the gateway is reachable exclusively through your own reverse proxy, and configure that proxy to overwrite `X-Real-IP`. Keep `MAX_ACTIVE_WORKERS`, `MAX_PENDING_AUTH_CONNECTIONS` and `MAX_CONNECTION_ATTEMPTS_PER_MINUTE` within the capacity of the gateway host.
 
 Set the web application server environment:
 - `MINING_GATEWAY_TOKEN_SECRET`: same secret as the gateway.
@@ -64,12 +65,17 @@ server {
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
         proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
         proxy_read_timeout 3600s;
         proxy_send_timeout 3600s;
         proxy_buffering off;
     }
 }
 ```
+
+Build the gateway container from the repository root so the workspace lockfile is available:
+
+`docker build -f services/pool-gateway/Dockerfile -t mine-me-pool-gateway .`
 
 The gateway health endpoint is `http://127.0.0.1:8081/healthz`; keep it private or expose it only through an authenticated monitoring network. Do not expose the local Stratum proxy or its admin interface.
 
