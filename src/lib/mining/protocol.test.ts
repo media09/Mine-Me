@@ -1,4 +1,4 @@
-import { afterAll, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { randomx_create_vm, randomx_init_cache } from "randomx.js";
 import {
   incrementRandomXNonce,
@@ -28,12 +28,25 @@ describe("RandomX Stratum helpers", () => {
     expect(view.getUint32(RANDOMX_NONCE_OFFSET, true)).toBe(0x01020305);
   });
 
-  it("wraps the nonce at uint32 max", () => {
+  it("wraps the 24-bit counter without overwriting the proxy-assigned fixed byte", () => {
     const blob = new Uint8Array(RANDOMX_NONCE_OFFSET + 4);
     const view = new DataView(blob.buffer);
-    view.setUint32(RANDOMX_NONCE_OFFSET, 0xffff_ffff, true);
+    view.setUint32(RANDOMX_NONCE_OFFSET, 0xabff_ffff, true);
     incrementRandomXNonce(blob);
-    expect(view.getUint32(RANDOMX_NONCE_OFFSET, true)).toBe(0);
+    expect(view.getUint32(RANDOMX_NONCE_OFFSET, true)).toBe(0xab00_0000);
+  });
+
+  it("preserves the downstream worker's fixed nonce byte", () => {
+    const blob = new Uint8Array(RANDOMX_NONCE_OFFSET + 4);
+    const view = new DataView(blob.buffer);
+    view.setUint32(RANDOMX_NONCE_OFFSET, 0x7a12_3456, true);
+    incrementRandomXNonce(blob);
+    expect(view.getUint32(RANDOMX_NONCE_OFFSET, true)).toBe(0x7a12_3457);
+  });
+
+  it("accepts a blob ending exactly after the 4-byte nonce", () => {
+    const blob = new Uint8Array(RANDOMX_NONCE_OFFSET + 4);
+    expect(() => incrementRandomXNonce(blob)).not.toThrow();
   });
 });
 
