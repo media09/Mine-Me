@@ -16,7 +16,7 @@ export type RandomXWorkerCommand =
 export type RandomXWorkerEvent =
   | { type: "initialising"; message: string }
   | { type: "ready"; message: string }
-  | { type: "hashrate"; hashesPerSecond: number; hashesComputed: number }
+  | { type: "hashrate"; hashesPerSecond: number; hashesComputed: number; sampleSeconds: number }
   | { type: "share-found"; jobId: string; nonce: string; result: string }
   | { type: "nonce-exhausted"; jobId: string }
   | { type: "paused" }
