@@ -40,6 +40,7 @@ create table if not exists public.referrals (
 create table if not exists public.devices (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references public.profiles(id) on delete cascade,
+  installation_id uuid not null,
   worker_code text not null unique,
   label text,
   browser_family text,
@@ -49,7 +50,8 @@ create table if not exists public.devices (
   status text not null default 'enrolled'
     check (status in ('enrolled', 'running', 'paused', 'stopped', 'offline', 'blocked')),
   last_seen_at timestamptz,
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  unique (user_id, installation_id)
 );
 
 create table if not exists public.device_events (
