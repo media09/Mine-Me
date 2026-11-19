@@ -4,8 +4,19 @@
 
 create schema if not exists private;
 revoke all on schema private from public;
-revoke all on schema private from anon, authenticated;
+revoke all on schema private from anon, authenticated, service_role;
 grant usage on schema private to supabase_auth_admin;
+
+-- One-time first-admin code. Kept outside the exposed public schema.
+create table if not exists private.bootstrap_codes (
+  token text primary key,
+  expires_at timestamptz not null,
+  consumed_at timestamptz,
+  consumed_by uuid references auth.users(id) on delete set null,
+  created_at timestamptz not null default now()
+);
+alter table private.bootstrap_codes enable row level security;
+revoke all on private.bootstrap_codes from public, anon, authenticated, service_role;
 
 create table if not exists public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
@@ -101,12 +112,31 @@ declare
   v_inviter_id uuid;
   v_own_code text;
   v_consent_version text;
+  v_bootstrap_token text;
+  v_is_bootstrap boolean := false;
 begin
   v_referral_code := upper(trim(coalesce(new.raw_user_meta_data ->> 'referral_code', '')));
   v_consent_version := coalesce(new.raw_user_meta_data ->> 'consent_version', '');
 
   if v_referral_code = '' then
-    raise exception 'A valid referral code is required to create a MINE-ME account.';
+    raise exception 'A valid invitation or referral code is required to create a MINE-ME account.';
+  end if;
+
+  -- Serialize the first signup so only one one-time code can create the initial admin.
+  perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtext('mine-me-first-admin-bootstrap'));
+
+  if not exists (select 1 from public.profiles) then
+    select b.token into v_bootstrap_token
+    from private.bootstrap_codes b
+    where b.token = v_referral_code
+      and b.consumed_at is null
+      and b.expires_at > now()
+    for update;
+
+    if v_bootstrap_token is null then
+      raise exception 'The initial administrator invitation is invalid or expired.';
+    end if;
+    v_is_bootstrap := true;
   end if;
 
   if coalesce(new.raw_user_meta_data ->> 'consent_to_compute', 'false') <> 'true'
@@ -114,12 +144,14 @@ begin
     raise exception 'Explicit acceptance of the current MINE-ME participation terms is required.';
   end if;
 
-  select p.id into v_inviter_id
-  from public.profiles p
-  where p.referral_code = v_referral_code;
+  if not v_is_bootstrap then
+    select p.id into v_inviter_id
+    from public.profiles p
+    where p.referral_code = v_referral_code;
 
-  if v_inviter_id is null then
-    raise exception 'The referral code is invalid or no longer active.';
+    if v_inviter_id is null then
+      raise exception 'The referral code is invalid or no longer active.';
+    end if;
   end if;
 
   loop
@@ -134,15 +166,21 @@ begin
   ) values (
     new.id,
     nullif(trim(coalesce(new.raw_user_meta_data ->> 'display_name', '')), ''),
-    'participant',
+    case when v_is_bootstrap then 'admin' else 'participant' end,
     v_own_code,
     v_inviter_id,
     v_consent_version,
     now()
   );
 
-  insert into public.referrals (inviter_id, invitee_id, referral_code)
-  values (v_inviter_id, new.id, v_referral_code);
+  if v_is_bootstrap then
+    update private.bootstrap_codes
+    set consumed_at = now(), consumed_by = new.id
+    where token = v_bootstrap_token;
+  else
+    insert into public.referrals (inviter_id, invitee_id, referral_code)
+    values (v_inviter_id, new.id, v_referral_code);
+  end if;
 
   return new;
 end;
