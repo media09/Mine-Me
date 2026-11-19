@@ -25,6 +25,7 @@ let activeTarget = 0n;
 let intensityPercent = 20;
 let running = false;
 let paused = true;
+let nonceExhausted = false;
 let loopPromise: Promise<void> | null = null;
 let hashesSinceReport = 0;
 let reportStartedAt = 0;
@@ -100,7 +101,11 @@ async function runLoop() {
           });
         }
         // Advance the 32-bit nonce for the next RandomX input (little-endian, as in XMRig).
-        incrementRandomXNonce(blob);
+        if (!incrementRandomXNonce(blob)) {
+          nonceExhausted = true;
+          paused = true;
+          emit({ type: "nonce-exhausted", jobId: jobAtHashStart.jobId });
+        }
       }
 
       const now = performance.now();
@@ -144,6 +149,7 @@ self.onmessage = (message: MessageEvent<RandomXWorkerCommand>) => {
       switch (command.type) {
         case "start":
           intensityPercent = Math.max(1, Math.min(80, Math.trunc(command.intensityPercent)));
+          nonceExhausted = false;
           await initialiseSeed(command.job.seedHash);
           installJob(command.job);
           running = true;
@@ -154,7 +160,13 @@ self.onmessage = (message: MessageEvent<RandomXWorkerCommand>) => {
 
         case "set-job":
           await initialiseSeed(command.job.seedHash);
+          const previousJobId = activeJob?.jobId;
           installJob(command.job);
+          if (nonceExhausted && command.job.jobId !== previousJobId) {
+            nonceExhausted = false;
+            if (running) paused = false;
+            emit({ type: "ready", message: "Nouveau travail reçu du pool." });
+          }
           break;
 
         case "set-intensity":
@@ -162,12 +174,13 @@ self.onmessage = (message: MessageEvent<RandomXWorkerCommand>) => {
           break;
 
         case "pause":
+          nonceExhausted = false;
           paused = true;
           emit({ type: "paused" });
           break;
 
         case "resume":
-          if (vm && activeJob && activeBlob) {
+          if (vm && activeJob && activeBlob && !nonceExhausted) {
             running = true;
             paused = false;
             void runLoop();
@@ -177,6 +190,7 @@ self.onmessage = (message: MessageEvent<RandomXWorkerCommand>) => {
         case "stop":
           running = false;
           paused = true;
+          nonceExhausted = false;
           activeJob = null;
           activeBlob = null;
           break;
