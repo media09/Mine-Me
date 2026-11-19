@@ -26,6 +26,8 @@ jobs:
         run: npm install --package-lock-only --ignore-scripts
       - name: Install locked dependencies
         run: npm ci
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high
       - name: Type check
         run: npm run typecheck
       - name: Mining protocol and RandomX vector tests
