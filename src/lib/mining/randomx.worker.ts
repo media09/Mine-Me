@@ -1,6 +1,13 @@
 /// <reference lib="webworker" />
 
 import { randomx_create_vm, randomx_init_cache } from "randomx.js";
+import {
+  bytesToHex,
+  hexToBytes,
+  incrementRandomXNonce,
+  parseRandomXTarget,
+  RANDOMX_NONCE_OFFSET,
+} from "./protocol";
 import type {
   RandomXMiningJob,
   RandomXWorkerCommand,
@@ -8,10 +15,6 @@ import type {
 } from "./types";
 
 type RandomXVm = ReturnType<typeof randomx_create_vm>;
-
-const NONCE_OFFSET = 39;
-const UINT32_MAX = 0xffff_ffffn;
-const UINT64_MAX = 0xffff_ffff_ffff_ffffn;
 
 let vm: RandomXVm | null = null;
 let activeSeedHash = "";
@@ -27,44 +30,6 @@ let reportStartedAt = 0;
 
 function emit(event: RandomXWorkerEvent) {
   self.postMessage(event);
-}
-
-function hexToBytes(value: string, expectedBytes?: number): Uint8Array {
-  const normalized = value.trim().toLowerCase();
-  if (!normalized || normalized.length % 2 !== 0 || !/^[0-9a-f]+$/.test(normalized)) {
-    throw new Error("Donnée hexadécimale de travail invalide.");
-  }
-  const bytes = new Uint8Array(normalized.length / 2);
-  for (let index = 0; index < bytes.length; index += 1) {
-    bytes[index] = Number.parseInt(normalized.slice(index * 2, index * 2 + 2), 16);
-  }
-  if (expectedBytes !== undefined && bytes.length !== expectedBytes) {
-    throw new Error("Longueur de donnée RandomX invalide.");
-  }
-  return bytes;
-}
-
-function bytesToHex(value: Uint8Array): string {
-  return Array.from(value, (byte) => byte.toString(16).padStart(2, "0")).join("");
-}
-
-export function parseRandomXTarget(targetHex: string): bigint {
-  const bytes = hexToBytes(targetHex);
-  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
-
-  if (bytes.length === 4) {
-    const compactTarget = BigInt(view.getUint32(0, true));
-    if (compactTarget === 0n) throw new Error("La difficulté du pool est invalide.");
-    return UINT64_MAX / (UINT32_MAX / compactTarget);
-  }
-
-  if (bytes.length === 8) {
-    const target = view.getBigUint64(0, true);
-    if (target === 0n) throw new Error("La difficulté du pool est invalide.");
-    return target;
-  }
-
-  throw new Error("Le pool a envoyé une cible RandomX non prise en charge.");
 }
 
 async function initialiseSeed(seedHash: string) {
@@ -85,7 +50,7 @@ function installJob(job: RandomXMiningJob) {
     throw new Error("Identifiant de travail invalide.");
   }
   const blob = hexToBytes(job.blob);
-  if (blob.length <= NONCE_OFFSET + 4) {
+  if (blob.length <= RANDOMX_NONCE_OFFSET + 4) {
     throw new Error("Le blob du pool est trop court pour un nonce RandomX.");
   }
   const target = parseRandomXTarget(job.target);
@@ -130,7 +95,7 @@ async function runLoop() {
         }
 
         if (hashView.getBigUint64(24, true) < activeTarget) {
-          const nonce = blob.slice(NONCE_OFFSET, NONCE_OFFSET + 4);
+          const nonce = blob.slice(RANDOMX_NONCE_OFFSET, RANDOMX_NONCE_OFFSET + 4);
           emit({
             type: "share-found",
             jobId: jobAtHashStart.jobId,
@@ -138,6 +103,8 @@ async function runLoop() {
             result: bytesToHex(hash),
           });
         }
+        // Advance the 32-bit nonce for the next RandomX input (little-endian, as in XMRig).
+        incrementRandomXNonce(blob);
       }
 
       const now = performance.now();
