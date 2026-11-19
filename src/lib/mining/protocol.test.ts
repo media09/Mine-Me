@@ -25,29 +25,29 @@ describe("RandomX Stratum helpers", () => {
     const blob = new Uint8Array(RANDOMX_NONCE_OFFSET + 4);
     const view = new DataView(blob.buffer);
     view.setUint32(RANDOMX_NONCE_OFFSET, 0x01020304, true);
-    incrementRandomXNonce(blob);
+    expect(incrementRandomXNonce(blob)).toBe(true);
     expect(view.getUint32(RANDOMX_NONCE_OFFSET, true)).toBe(0x01020305);
   });
 
-  it("wraps the 24-bit counter without overwriting the proxy-assigned fixed byte", () => {
+  it("does not wrap an exhausted 24-bit nonce range or overwrite its worker byte", () => {
     const blob = new Uint8Array(RANDOMX_NONCE_OFFSET + 4);
     const view = new DataView(blob.buffer);
     view.setUint32(RANDOMX_NONCE_OFFSET, 0xabff_ffff, true);
-    incrementRandomXNonce(blob);
-    expect(view.getUint32(RANDOMX_NONCE_OFFSET, true)).toBe(0xab00_0000);
+    expect(incrementRandomXNonce(blob)).toBe(false);
+    expect(view.getUint32(RANDOMX_NONCE_OFFSET, true)).toBe(0xabff_ffff);
   });
 
   it("preserves the downstream worker's fixed nonce byte", () => {
     const blob = new Uint8Array(RANDOMX_NONCE_OFFSET + 4);
     const view = new DataView(blob.buffer);
     view.setUint32(RANDOMX_NONCE_OFFSET, 0x7a12_3456, true);
-    incrementRandomXNonce(blob);
+    expect(incrementRandomXNonce(blob)).toBe(true);
     expect(view.getUint32(RANDOMX_NONCE_OFFSET, true)).toBe(0x7a12_3457);
   });
 
   it("accepts a blob ending exactly after the 4-byte nonce", () => {
     const blob = new Uint8Array(RANDOMX_NONCE_OFFSET + 4);
-    expect(() => incrementRandomXNonce(blob)).not.toThrow();
+    expect(incrementRandomXNonce(blob)).toBe(true);
   });
 
   it("compares the little-endian low 64 bits of a RandomX hash to the pool target", () => {
