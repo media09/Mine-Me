@@ -37,7 +37,7 @@ export default async function DashboardPage() {
     .in("key", ["mining_enabled", "global_emergency_pause", "global_max_intensity_percent"]);
 
   const deviceIds = (devices ?? []).map((device) => device.id);
-  const [shareResult, eventResult] = deviceIds.length
+  const [shareResult, eventResult, telemetryResult] = deviceIds.length
     ? await Promise.all([
         supabase.from("mining_share_ledger")
           .select("id, pool_share_id, accepted, difficulty, verified_at")
@@ -49,11 +49,16 @@ export default async function DashboardPage() {
           .in("device_id", deviceIds)
           .order("created_at", { ascending: false })
           .limit(25),
+        supabase.from("device_telemetry")
+          .select("device_id, reported_hashrate, hashes_computed, sample_seconds, measured_at, received_at")
+          .in("device_id", deviceIds)
+          .order("received_at", { ascending: false }),
       ])
-    : [{ data: [] }, { data: [] }];
+    : [{ data: [] }, { data: [] }, { data: [] }];
 
   const verifiedShares = shareResult.data ?? [];
   const deviceEvents = eventResult.data ?? [];
+  const deviceTelemetry = telemetryResult.data ?? [];
   const acceptedShareCount = verifiedShares.filter((share) => share.accepted).length;
   const setting = (key: string) => platformSettings?.find((row) => row.key === key)?.value;
   const miningEnabled = setting("mining_enabled") === true;
@@ -130,6 +135,22 @@ export default async function DashboardPage() {
             <td>{new Intl.DateTimeFormat("fr-FR", { dateStyle: "medium", timeStyle: "short" }).format(new Date(share.verified_at))}</td>
           </tr>)}
           {!verifiedShares.length && <tr><td colSpan={4}>Aucune share vérifiée enregistrée.</td></tr>}</tbody>
+        </table></div>
+      </section>
+
+      <section className="device-section">
+        <div className="section-title"><div><span className="eyebrow">DIAGNOSTIC NAVIGATEUR</span><h2>Télémétrie de calcul</h2></div></div>
+        <p className="dashboard-disclaimer">Taux de hachage déclaré par le navigateur uniquement. Il est indicatif, peut être falsifié et ne constitue ni une preuve de share acceptée ni un revenu.</p>
+        <div className="admin-table-wrap"><table className="admin-table">
+          <thead><tr><th>Worker</th><th>Hashrate navigateur</th><th>Hashes échantillonnés</th><th>Durée de l’échantillon</th><th>Dernière mesure</th></tr></thead>
+          <tbody>{deviceTelemetry.map((sample) => <tr key={sample.device_id}>
+            <td>{devices?.find((device) => device.id === sample.device_id)?.worker_code ?? "—"}</td>
+            <td>{Number(sample.reported_hashrate).toFixed(2)} H/s</td>
+            <td>{sample.hashes_computed}</td>
+            <td>{Number(sample.sample_seconds).toFixed(1)} s</td>
+            <td>{new Intl.DateTimeFormat("fr-FR", { dateStyle: "medium", timeStyle: "short" }).format(new Date(sample.measured_at))}</td>
+          </tr>)}
+          {!deviceTelemetry.length && <tr><td colSpan={5}>Aucune télémétrie navigateur reçue.</td></tr>}</tbody>
         </table></div>
       </section>
 
