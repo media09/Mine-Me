@@ -1,0 +1,57 @@
+/* Shared styles for authentication, member and admin pages. */
+.auth-shell,.terms-shell{min-height:100vh;width:min(100% - 36px,760px);margin:0 auto;padding:42px 0 56px}
+.auth-brand{display:inline-block;margin-bottom:30px;color:#adff65;text-decoration:none;font-weight:800;letter-spacing:.14em}
+.auth-card,.terms-card{padding:34px;border:1px solid #2a3947;border-radius:12px;background:#111923}
+.auth-kicker{font:11px "DM Mono",monospace;letter-spacing:.13em;color:#adff65}
+.auth-card h1,.terms-card h1{margin:14px 0 8px;font-size:clamp(30px,5vw,42px);letter-spacing:-.05em}
+.auth-intro{margin:0 0 26px;color:#9baaba;font-size:13px;line-height:1.7}
+.auth-form{display:grid;gap:16px}
+.auth-form>label{display:grid;gap:7px;color:#dbe2e9;font-size:12px;font-weight:700}
+.auth-form input:not([type=checkbox]){width:100%;padding:13px 14px;border:1px solid #344451;border-radius:6px;background:#0a1118;color:#f3f6fa;font:14px Manrope,Arial,sans-serif;outline:none}
+.auth-form input:focus{border-color:#adff65;box-shadow:0 0 0 2px #adff6520}
+.consent-box{padding:18px;border:1px solid #344451;border-radius:8px;background:#0c131a}
+.consent-check{display:flex;align-items:flex-start;gap:10px;color:#f3f6fa;font-size:12px;font-weight:700;line-height:1.6}
+.consent-check input{margin-top:3px;accent-color:#adff65}
+.consent-box p{margin:12px 0 0;color:#9baaba;font-size:11px;line-height:1.8}
+.consent-box .ownership-notice{color:#d2dbe3}
+.terms-link,.auth-switch a,.text-link{color:#adff65}
+.terms-link{display:inline-block;margin-top:14px;font-size:11px}
+.auth-submit{padding:14px 18px;border:0;border-radius:6px;background:#adff65;color:#0b1109;font-weight:800;cursor:pointer}
+.auth-submit:disabled{opacity:.6;cursor:wait}
+.form-error,.form-success{margin:0;padding:12px;border-radius:6px;font-size:12px;line-height:1.6}
+.form-error{background:#3a1d24;color:#ffb8c0}
+.form-success{background:#193023;color:#b9ffce}
+.auth-switch,.auth-footnote{color:#9baaba;text-align:center;font-size:12px;line-height:1.7}
+.auth-switch{margin:22px 0 0}
+.auth-footnote{margin:22px 0 0}
+.terms-card h2{margin:28px 0 8px;font-size:18px}
+.terms-card p{color:#aebbc7;font-size:13px;line-height:1.9}
+.terms-version{padding-top:18px;border-top:1px solid #2a3947;font-style:italic}
+.dashboard-shell{width:min(1120px,calc(100% - 48px));margin:0 auto;padding-bottom:70px}
+.dashboard-topbar{height:84px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #ffffff18}
+.signout-button{padding:9px 13px;border:1px solid #344451;border-radius:6px;background:transparent;color:#dbe2e9;font-size:12px;cursor:pointer}
+.dashboard-heading{padding:68px 0 32px}
+.dashboard-heading h1{margin:14px 0 8px;font-size:clamp(36px,6vw,58px);letter-spacing:-.06em}
+.dashboard-heading p{color:#9baaba;font-size:13px}
+.dashboard-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.dashboard-card{padding:23px;border:1px solid #273440;border-radius:8px;background:#111923}
+.card-label{font:10px "DM Mono",monospace;letter-spacing:.1em;color:#adff65}
+.metric{display:block;margin:20px 0 8px;font-size:34px;letter-spacing:-.04em}
+.metric-state{font-size:23px;color:#e8bc57}
+.dashboard-card p{color:#9baaba;font-size:11px;line-height:1.8}
+.referral-code{display:block;margin-top:18px;color:#adff65;font:20px "DM Mono",monospace;overflow-wrap:anywhere}
+.text-link{display:block;margin-top:12px;font-size:11px;overflow-wrap:anywhere}
+.admin-shortcut{display:inline-block;margin-bottom:22px;color:#adff65;font-size:12px}
+.device-section{margin-top:52px}
+.section-title h2{margin:10px 0 20px;font-size:28px}
+.empty-state,.device-list,.admin-warning{padding:22px;border:1px solid #273440;border-radius:8px;background:#0e151e}
+.empty-state p,.admin-warning p{color:#9baaba;font-size:12px;line-height:1.8}
+.device-row{display:flex;justify-content:space-between;gap:12px;padding:16px 0;border-bottom:1px solid #273440;font-size:12px}
+.device-row:last-child{border:0}
+.device-row div{display:grid;gap:5px}
+.device-row small{color:#9baaba;font:10px "DM Mono",monospace}
+.device-status{color:#e8bc57}
+.dashboard-disclaimer{margin-top:28px;color:#9baaba;font-size:11px;line-height:1.8}
+.admin-warning{border-color:#725d32;background:#211c12}
+.admin-warning strong{color:#f0ca72}
+@media(max-width:720px){.dashboard-grid{grid-template-columns:1fr}.auth-card,.terms-card{padding:22px}.dashboard-shell{width:calc(100% - 36px)}.device-row{flex-wrap:wrap}}
