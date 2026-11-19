@@ -1,5 +1,5 @@
 import { createServer } from "node:http";
-import { createConnection } from "node:net";
+import { createConnection, isIP } from "node:net";
 import { randomUUID } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
 import { WebSocket, WebSocketServer } from "ws";
@@ -360,7 +360,7 @@ function connectToLocalProxy(session) {
 function resolveClientIp(request) {
   if (config.trustProxyHeaders) {
     const forwardedIp = request.headers["x-real-ip"];
-    if (typeof forwardedIp === "string" && forwardedIp.length <= 64) return forwardedIp;
+    if (typeof forwardedIp === "string" && isIP(forwardedIp) !== 0) return forwardedIp;
   }
   return request.socket.remoteAddress || "unknown";
 }
