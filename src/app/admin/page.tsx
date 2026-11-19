@@ -3,6 +3,8 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { signOutAction } from "../dashboard/actions";
 import AdminControls from "./admin-controls";
+import AdminMemberControls from "./member-controls";
+import AdminDeviceControls from "./device-controls";
 
 function shortId(value: string | null | undefined) {
   return value ? value.slice(0, 8) : "—";
@@ -23,11 +25,12 @@ export default async function AdminPage() {
 
   const { data: currentProfile } = await supabase
     .from("profiles")
-    .select("role, display_name")
+    .select("role, display_name, account_status")
     .eq("id", user.id)
     .maybeSingle();
 
   if (currentProfile?.role !== "admin") redirect("/mineme/dashboard");
+  if (currentProfile.account_status !== "active") redirect("/mineme/account-suspended");
 
   const [
     membersResult,
@@ -39,7 +42,7 @@ export default async function AdminPage() {
     auditResult,
   ] = await Promise.all([
     supabase.from("profiles")
-      .select("id, display_name, role, referral_code, referred_by, consent_version, consented_at, created_at", { count: "exact" })
+      .select("id, display_name, role, referral_code, referred_by, consent_version, consented_at, account_status, referral_enabled, created_at", { count: "exact" })
       .order("created_at", { ascending: false }).limit(100),
     supabase.from("devices")
       .select("id, user_id, worker_code, label, browser_family, platform_family, hardware_threads, intensity_percent, status, last_seen_at, created_at", { count: "exact" })
@@ -111,28 +114,32 @@ export default async function AdminPage() {
       <section className="admin-section">
         <div className="admin-section-heading"><span className="eyebrow">01 / MEMBRES</span><h2>Comptes utilisateurs</h2></div>
         <div className="admin-table-wrap"><table className="admin-table">
-          <thead><tr><th>Membre</th><th>Rôle</th><th>Code de parrainage</th><th>Parrain</th><th>Consentement</th><th>Inscription</th></tr></thead>
+          <thead><tr><th>Membre</th><th>Rôle</th><th>Code de parrainage</th><th>Parrain</th><th>Consentement</th><th>État</th><th>Code actif</th><th>Inscription</th><th>Actions</th></tr></thead>
           <tbody>{members.map((member) => <tr key={member.id}>
             <td><strong>{member.display_name || "Sans nom"}</strong><small>{shortId(member.id)}</small></td>
             <td>{member.role}</td><td><code>{member.referral_code}</code></td>
             <td>{member.referred_by ? userNames.get(member.referred_by) || shortId(member.referred_by) : "Premier administrateur"}</td>
-            <td>{member.consent_version || "—"}</td><td>{formatDate(member.created_at)}</td>
+            <td>{member.consent_version || "—"}</td>
+            <td>{member.account_status}</td><td>{member.referral_enabled ? "Oui" : "Non"}</td>
+            <td>{formatDate(member.created_at)}</td>
+            <td><AdminMemberControls memberId={member.id} accountStatus={member.account_status} referralEnabled={member.referral_enabled} /></td>
           </tr>)}
-          {!members.length && <tr><td colSpan={6}>Aucun compte enregistré.</td></tr>}</tbody>
+          {!members.length && <tr><td colSpan={9}>Aucun compte enregistré.</td></tr>}</tbody>
         </table></div>
       </section>
 
       <section className="admin-section">
         <div className="admin-section-heading"><span className="eyebrow">02 / APPAREILS</span><h2>Flotte des navigateurs</h2></div>
         <div className="admin-table-wrap"><table className="admin-table">
-          <thead><tr><th>Worker</th><th>Membre</th><th>Plateforme / navigateur</th><th>Cœurs logiques déclarés</th><th>Intensité souhaitée</th><th>État</th><th>Dernier contact</th></tr></thead>
+          <thead><tr><th>Worker</th><th>Membre</th><th>Plateforme / navigateur</th><th>Cœurs logiques déclarés</th><th>Intensité souhaitée</th><th>État</th><th>Dernier contact</th><th>Actions</th></tr></thead>
           <tbody>{devices.map((device) => <tr key={device.id}>
             <td><code>{device.worker_code}</code></td>
             <td>{userNames.get(device.user_id) || shortId(device.user_id)}</td>
             <td>{device.platform_family || "—"} / {device.browser_family || "—"}</td>
-            <td>{device.hardware_threads ?? "—"}</td><td>{device.intensity_percent}%</td><td>{device.status}</td><td>{formatDate(device.last_seen_at)}</td>
+            <td>{device.hardware_threads ?? "—"}</td><td>{device.intensity_percent}%</td><td>{device.status}</td>
+            <td>{formatDate(device.last_seen_at)}</td><td><AdminDeviceControls deviceId={device.id} status={device.status} /></td>
           </tr>)}
-          {!devices.length && <tr><td colSpan={7}>Aucun appareil associé.</td></tr>}</tbody>
+          {!devices.length && <tr><td colSpan={8}>Aucun appareil associé.</td></tr>}</tbody>
         </table></div>
       </section>
 
