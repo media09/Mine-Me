@@ -1,0 +1,14 @@
+{
+  "name": "@mine-me/pool-gateway",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node index.mjs",
+    "test": "node --test gateway.test.mjs"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "2.119.2",
+    "ws": "8.23.0"
+  }
+}

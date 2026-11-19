@@ -1,0 +1,54 @@
+name: MINE-ME CI
+
+on:
+  push:
+    branches:
+      - main
+      - feature/mine-me-foundation
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Resolve and pin the dependency graph
+        run: npm install --package-lock-only --ignore-scripts
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high
+      - name: Type check
+        run: npm run typecheck
+      - name: Mining protocol and RandomX vector tests
+        run: npm test
+      - name: Pool gateway token and protocol tests
+        run: npm run test:gateway
+      - name: Production build
+        run: npm run build
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-placeholder-public-key
+          NEXT_PUBLIC_APP_URL: https://example.com/mineme
+      - name: Commit generated lockfile
+        if: github.event_name == 'push' && github.ref == 'refs/heads/feature/mine-me-foundation'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package-lock.json
+          if git diff --cached --quiet; then
+            echo "Dependency lockfile is already current."
+            exit 0
+          fi
+          git commit -m "chore: lock dependency graph"
+          git push
