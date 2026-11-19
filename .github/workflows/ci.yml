@@ -28,6 +28,8 @@ jobs:
         run: npm ci
       - name: Type check
         run: npm run typecheck
+      - name: Mining protocol and RandomX vector tests
+        run: npm test
       - name: Production build
         run: npm run build
         env:
