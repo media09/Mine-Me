@@ -4,6 +4,7 @@ import {
   incrementRandomXNonce,
   parseRandomXTarget,
   RANDOMX_NONCE_OFFSET,
+  randomXHashMeetsTarget,
 } from "./protocol";
 
 describe("RandomX Stratum helpers", () => {
@@ -48,11 +49,24 @@ describe("RandomX Stratum helpers", () => {
     const blob = new Uint8Array(RANDOMX_NONCE_OFFSET + 4);
     expect(() => incrementRandomXNonce(blob)).not.toThrow();
   });
+
+  it("compares the little-endian low 64 bits of a RandomX hash to the pool target", () => {
+    const hash = new Uint8Array(32);
+    const view = new DataView(hash.buffer);
+    view.setBigUint64(24, 99n, true);
+    expect(randomXHashMeetsTarget(hash, 100n)).toBe(true);
+    expect(randomXHashMeetsTarget(hash, 99n)).toBe(false);
+  });
+
+  it("rejects hashes that are not exactly 32 bytes", () => {
+    expect(() => randomXHashMeetsTarget(new Uint8Array(31), 100n)).toThrow();
+  });
 });
 
 describe("RandomX WASM known-answer test", () => {
   it("matches the upstream reference vector", () => {
-    const cache = randomx_init_cache("test key 000");
+    const seed = new TextEncoder().encode("test key 000");
+    const cache = randomx_init_cache(seed);
     const vm = randomx_create_vm(cache);
 
     expect(vm.calculate_hex_hash("This is a test")).toBe(
