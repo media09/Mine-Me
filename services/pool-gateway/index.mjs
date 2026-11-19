@@ -86,7 +86,7 @@ function readScalar(value) {
   return null;
 }
 
-async function readPlatformState(claims) {
+async function readPlatformState(claims, { allowRunning = false } = {}) {
   const [profileResult, deviceResult, settingsResult] = await Promise.all([
     supabase.from("profiles")
       .select("id, role, account_status, consent_version, consented_at")
@@ -114,11 +114,18 @@ async function readPlatformState(claims) {
     throw new Error("Current computing consent is missing.");
   }
   if (device.worker_code !== claims.workerCode) throw new Error("Worker identity mismatch.");
+  const allowedDeviceStatuses = allowRunning ? ["enrolled", "running"] : ["enrolled"];
+  if (!allowedDeviceStatuses.includes(device.status)) {
+    throw new Error("Device is not enrolled or has already been paused/stopped.");
+  }
 
   const settings = new Map((settingsResult.data || []).map((row) => [row.key, readScalar(row.value)]));
   const miningEnabled = settings.get("mining_enabled") === true;
   const emergencyPause = settings.get("global_emergency_pause") !== false;
-  const maxIntensity = Math.min(80, Math.max(1, Number(settings.get("global_max_intensity_percent") ?? 80)));
+  const maxIntensityValue = Number(settings.get("global_max_intensity_percent") ?? 80);
+  const maxIntensity = Number.isFinite(maxIntensityValue)
+    ? Math.min(80, Math.max(1, Math.trunc(maxIntensityValue)))
+    : 80;
 
   if (!miningEnabled) throw new Error("Browser mining is globally disabled.");
   if (emergencyPause) throw new Error("The global emergency pause is enabled.");
@@ -216,7 +223,7 @@ function cleanupSession(session, reason = "closed") {
 async function revalidateSession(session) {
   if (session.closed) return;
   try {
-    const state = await readPlatformState(session.claims);
+    const state = await readPlatformState(session.claims, { allowRunning: true });
     if (state.device.status !== "running") throw new Error("Device is no longer in running state.");
     await supabase.from("devices")
       .update({ last_seen_at: new Date().toISOString() })
@@ -392,35 +399,58 @@ function consumeMessageRate(session) {
 }
 
 async function authenticateBrowserSession(session, rawMessage) {
-  if (session.authenticated) throw new Error("A session is already authenticated.");
+  if (session.authenticated || session.authenticating) {
+    throw new Error("A mining session is already authenticating or authenticated.");
+  }
   if (!rawMessage || rawMessage.type !== "auth" || typeof rawMessage.token !== "string") {
     throw new Error("The first WebSocket message must contain a session token.");
   }
 
-  const claims = verifySessionToken(rawMessage.token, env.MINING_GATEWAY_TOKEN_SECRET);
-  const now = Math.floor(Date.now() / 1000);
-  for (const [jti, expiresAt] of usedTokenIds) if (expiresAt <= now) usedTokenIds.delete(jti);
-  if (usedTokenIds.has(claims.jti)) throw new Error("This mining session token has already been used.");
-  if (activeDevices.has(claims.deviceId)) throw new Error("This device already has an active mining connection.");
-  if (sessions.size >= config.maxWorkers) throw new Error("The mining service has reached its current worker limit.");
+  session.authenticating = true;
+  try {
+    const claims = verifySessionToken(rawMessage.token, env.MINING_GATEWAY_TOKEN_SECRET);
+    const now = Math.floor(Date.now() / 1000);
+    for (const [jti, expiresAt] of usedTokenIds) {
+      if (expiresAt <= now) usedTokenIds.delete(jti);
+    }
 
-  const state = await readPlatformState(claims);
-  if (state.device.status !== "enrolled") {
-    throw new Error("Device must be enrolled and not paused or stopped.");
+    if (usedTokenIds.has(claims.jti)) {
+      throw new Error("This mining session token has already been used.");
+    }
+    if (activeDevices.has(claims.deviceId)) {
+      throw new Error("This device already has an active mining connection.");
+    }
+    if (sessions.size > config.maxWorkers) {
+      throw new Error("The mining service has reached its current worker limit.");
+    }
+
+    // The database read is asynchronous: re-check replay and device leases after it
+    // to close the race where two sockets present the same token concurrently.
+    await readPlatformState(claims);
+
+    if (usedTokenIds.has(claims.jti)) {
+      throw new Error("This mining session token has already been used.");
+    }
+    if (activeDevices.has(claims.deviceId)) {
+      throw new Error("This device already has an active mining connection.");
+    }
+
+    usedTokenIds.set(claims.jti, claims.exp);
+    activeDevices.set(claims.deviceId, session);
+    session.claims = claims;
+    session.authenticated = true;
+    clearTimeout(session.authTimer);
+    session.nextProxyRequestId = 100;
+    session.pendingShares = new Map();
+    session.currentJobId = null;
+    session.fixedNonceByte = null;
+    session.submittedNonces = new Set();
+    session.proxyAuthenticated = false;
+
+    await connectToLocalProxy(session);
+  } finally {
+    session.authenticating = false;
   }
-  usedTokenIds.set(claims.jti, claims.exp);
-  activeDevices.set(claims.deviceId, session);
-  session.claims = claims;
-  session.authenticated = true;
-  clearTimeout(session.authTimer);
-  session.nextProxyRequestId = 100;
-  session.pendingShares = new Map();
-  session.currentJobId = null;
-  session.fixedNonceByte = null;
-  session.submittedNonces = new Set();
-  session.proxyAuthenticated = false;
-
-  await connectToLocalProxy(session);
 }
 
 async function handleBrowserMessage(session, rawData) {
@@ -553,6 +583,7 @@ wss.on("connection", (ws) => {
     ws,
     claims: null,
     authenticated: false,
+    authenticating: false,
     closed: false,
     rateWindowStart: Date.now(),
     messageCount: 0,
