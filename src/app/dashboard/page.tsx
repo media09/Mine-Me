@@ -155,6 +155,22 @@ export default async function DashboardPage() {
       </section>
 
       <section className="device-section">
+        <div className="section-title"><div><span className="eyebrow">DIAGNOSTIC NAVIGATEUR</span><h2>Télémétrie de calcul</h2></div></div>
+        <p className="dashboard-disclaimer">Taux de hachage déclaré par le navigateur uniquement. Il est indicatif, peut être falsifié et ne constitue ni une preuve de share acceptée ni un revenu.</p>
+        <div className="admin-table-wrap"><table className="admin-table">
+          <thead><tr><th>Worker</th><th>Hashrate navigateur</th><th>Hashes échantillonnés</th><th>Durée de l’échantillon</th><th>Dernière mesure</th></tr></thead>
+          <tbody>{deviceTelemetry.map((sample) => <tr key={sample.device_id}>
+            <td>{devices?.find((device) => device.id === sample.device_id)?.worker_code ?? "—"}</td>
+            <td>{Number(sample.reported_hashrate).toFixed(2)} H/s</td>
+            <td>{sample.hashes_computed}</td>
+            <td>{Number(sample.sample_seconds).toFixed(1)} s</td>
+            <td>{new Intl.DateTimeFormat("fr-FR", { dateStyle: "medium", timeStyle: "short" }).format(new Date(sample.measured_at))}</td>
+          </tr>)}
+          {!deviceTelemetry.length && <tr><td colSpan={5}>Aucune télémétrie navigateur reçue.</td></tr>}</tbody>
+        </table></div>
+      </section>
+
+      <section className="device-section">
         <div className="section-title"><div><span className="eyebrow">JOURNAL DES APPAREILS</span><h2>Historique des appareils</h2></div></div>
         <div className="admin-table-wrap"><table className="admin-table">
           <thead><tr><th>Worker</th><th>Événement</th><th>Détails</th><th>Date</th></tr></thead>
