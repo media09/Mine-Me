@@ -247,7 +247,9 @@ function cleanupSession(session, reason = "closed") {
   if (session.closed) return;
   session.closed = true;
   sessions.delete(session);
-  if (session.claims?.deviceId) activeDevices.delete(session.claims.deviceId);
+  if (session.claims?.deviceId && activeDevices.get(session.claims.deviceId) === session) {
+    activeDevices.delete(session.claims.deviceId);
+  }
   if (session.authTimer) clearTimeout(session.authTimer);
   if (session.keepAliveTimer) clearInterval(session.keepAliveTimer);
   if (session.revalidateTimer) clearInterval(session.revalidateTimer);
@@ -301,7 +303,10 @@ function processProxyMessage(session, message) {
     session.proxyMinerId = message.result.id;
     const job = parseProxyJob(session, message.result.job);
     void markDeviceRunning(session).then(() => {
-      if (session.closed) return;
+      if (session.closed) {
+        void markDeviceOffline(session);
+        return;
+      }
       send(session.ws, {
         type: "ready",
         workerCode: session.claims.workerCode,
