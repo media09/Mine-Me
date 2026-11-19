@@ -34,7 +34,7 @@ export default async function DashboardPage() {
   const { data: platformSettings } = await supabase
     .from("platform_settings")
     .select("key, value")
-    .in("key", ["mining_enabled", "global_emergency_pause"]);
+    .in("key", ["mining_enabled", "global_emergency_pause", "global_max_intensity_percent"]);
 
   const deviceIds = (devices ?? []).map((device) => device.id);
   const [shareResult, eventResult] = deviceIds.length
@@ -59,6 +59,10 @@ export default async function DashboardPage() {
   const miningEnabled = setting("mining_enabled") === true;
   const emergencyPause = setting("global_emergency_pause") !== false;
   const platformAllowsMining = miningEnabled && !emergencyPause;
+  const maxIntensityValue = Number(setting("global_max_intensity_percent") ?? 80);
+  const maxIntensityPercent = Number.isFinite(maxIntensityValue)
+    ? Math.min(80, Math.max(1, Math.trunc(maxIntensityValue)))
+    : 80;
 
   const siteUrl = (process.env.NEXT_PUBLIC_APP_URL ?? "https://app.sharedboost.com/mineme").replace(/\/$/, "");
   const referralUrl = profile?.referral_code && profile.referral_enabled
@@ -113,7 +117,7 @@ export default async function DashboardPage() {
         {!devices?.length ? (
           <div className="empty-state"><strong>Aucun appareil enregistré</strong><p>L’association du navigateur apparaîtra ici après validation de votre consentement et de la configuration du compte.</p></div>
         ) : (
-          <div className="device-list">{devices.map((device) => <DeviceControl key={device.id} device={device} />)}</div>
+          <div className="device-list">{devices.map((device) => <DeviceControl key={device.id} device={device} maxIntensityPercent={maxIntensityPercent} />)}</div>
         )}
       </section>
       <section className="device-section">
