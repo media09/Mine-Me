@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 const principles = [
   {
     number: "01",
@@ -27,7 +29,7 @@ export default function Home() {
           <span className="brand-mark">M</span>
           <span>MINE-ME</span>
         </a>
-        <a className="top-link" href="#principes">Notre fonctionnement <span>↗</span></a>
+        <div className="top-actions"><Link className="top-link" href="#principes">Notre fonctionnement</Link><Link className="top-link" href="/login">Connexion</Link></div>
       </header>
 
       <section className="hero" id="top">
@@ -37,7 +39,7 @@ export default function Home() {
           MINE-ME rassemble volontairement des capacités de calcul via le navigateur.
           Vous gardez le contrôle de votre appareil, de son intensité et de votre participation.
         </p>
-        <a className="primary-link" href="#principes">Découvrir le projet <span>↗</span></a>
+        <Link className="primary-link" href="/register">Créer un compte sur invitation <span>↗</span></Link>
 
         <div className="system-card" aria-label="État actuel de la plateforme">
           <div className="card-heading">
