@@ -89,8 +89,8 @@ export default function DeviceControl({
     let engine: RandomXWorkerEngine | null = null;
 
     async function connect() {
-      if (deviceStatus !== "enrolled" && deviceStatus !== "offline") {
-        setMiningState(deviceStatus === "running" ? "offline" : deviceStatus);
+      if (deviceStatus !== "enrolled" && deviceStatus !== "offline" && deviceStatus !== "running") {
+        setMiningState(deviceStatus);
         return;
       }
 
@@ -162,6 +162,14 @@ export default function DeviceControl({
               engine = new RandomXWorkerEngine((workerEvent: RandomXWorkerEvent) => {
                 if (workerEvent.type === "hashrate") {
                   setHashrate(workerEvent.hashesPerSecond);
+                  if (socket?.readyState === WebSocket.OPEN) {
+                    socket.send(JSON.stringify({
+                      type: "telemetry",
+                      hashesPerSecond: workerEvent.hashesPerSecond,
+                      hashesComputed: workerEvent.hashesComputed,
+                      sampleSeconds: workerEvent.sampleSeconds,
+                    }));
+                  }
                 } else if (workerEvent.type === "share-found") {
                   if (socket?.readyState === WebSocket.OPEN) {
                     socket.send(JSON.stringify({
