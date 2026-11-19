@@ -22,6 +22,11 @@ function jsonError(message: string, status: number) {
 
 export async function POST(request: NextRequest) {
   try {
+    const origin = request.headers.get("origin");
+    const requestOrigin = new URL(request.url).origin;
+    if (!origin || origin !== requestOrigin) {
+      return jsonError("Origine de requête non autorisée.", 403);
+    }
     const supabase = await createClient();
     const { data: { user }, error: userError } = await supabase.auth.getUser();
     if (userError || !user) return jsonError("Vous devez être connecté pour démarrer votre appareil.", 401);
