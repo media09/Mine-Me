@@ -188,7 +188,7 @@ function cleanupSession(session, reason = "closed") {
   if (session.closed) return;
   session.closed = true;
   sessions.delete(session);
-  activeDevices.delete(session.claims.deviceId);
+  if (session.claims?.deviceId) activeDevices.delete(session.claims.deviceId);
   if (session.authTimer) clearTimeout(session.authTimer);
   if (session.keepAliveTimer) clearInterval(session.keepAliveTimer);
   if (session.revalidateTimer) clearInterval(session.revalidateTimer);
@@ -196,9 +196,13 @@ function cleanupSession(session, reason = "closed") {
     try { session.proxySocket.end(); } catch { session.proxySocket.destroy(); }
   }
   if (session.ws.readyState === WebSocket.OPEN) safeClose(session.ws, 1000, reason);
-  void markDeviceOffline(session.claims).then(() => {
-    log("worker_disconnected", { deviceId: session.claims.deviceId, reason });
-  });
+  if (session.claims) {
+    void markDeviceOffline(session.claims).then(() => {
+      log("worker_disconnected", { deviceId: session.claims.deviceId, reason });
+    });
+  } else {
+    log("unauthenticated_socket_closed", { reason });
+  }
 }
 
 async function revalidateSession(session) {
