@@ -158,6 +158,20 @@ async function markDeviceRunning(session) {
   if (error || !data || data.status !== "running" || data.active_session_id !== session.gatewaySessionId) {
     throw new Error("The device could not enter the running state.");
   }
+
+  // The database clamps intensity when the row enters the running state.
+  // Verify the committed value again so a concurrent admin ceiling reduction
+  // cannot start a worker above the newly applied limit.
+  if (data.intensity_percent < claims.intensityPercent) {
+    await supabase.from("devices")
+      .update({ status: "paused" })
+      .eq("id", claims.deviceId)
+      .eq("user_id", claims.sub)
+      .eq("status", "running")
+      .eq("active_session_id", session.gatewaySessionId);
+    throw new Error("The device intensity ceiling changed before the worker started.");
+  }
+
   return data;
 }
 
