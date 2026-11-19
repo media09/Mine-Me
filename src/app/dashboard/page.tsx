@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { signOutAction } from "./actions";
+import CopyReferralLink from "./copy-referral-link";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -18,6 +19,12 @@ export default async function DashboardPage() {
     .from("devices")
     .select("id, worker_code, label, status, intensity_percent, last_seen_at")
     .eq("user_id", user.id)
+    .order("created_at", { ascending: false });
+
+  const { data: referrals } = await supabase
+    .from("referrals")
+    .select("id, created_at")
+    .eq("inviter_id", user.id)
     .order("created_at", { ascending: false });
 
   const siteUrl = (process.env.NEXT_PUBLIC_APP_URL ?? "https://app.sharedboost.com/mineme").replace(/\/$/, "");
@@ -48,11 +55,16 @@ export default async function DashboardPage() {
           <strong className="metric metric-state">Non activé</strong>
           <p>Le module de minage réel sera activé uniquement après validation technique du pool.</p>
         </article>
+        <article className="dashboard-card">
+          <span className="card-label">INVITATIONS VALIDÉES</span>
+          <strong className="metric">{referrals?.length ?? 0}</strong>
+          <p>Comptes créés avec votre code de parrainage.</p>
+        </article>
         <article className="dashboard-card referral-card">
           <span className="card-label">VOTRE PARRAINAGE</span>
           <strong className="referral-code">{profile?.referral_code ?? "En attente"}</strong>
           <p>Partagez ce lien uniquement avec les personnes que vous invitez.</p>
-          {referralUrl && <a className="text-link" href={referralUrl}>{referralUrl}</a>}
+          {referralUrl && <><a className="text-link" href={referralUrl}>{referralUrl}</a><CopyReferralLink url={referralUrl} /></>}
         </article>
       </section>
       <section className="device-section">
