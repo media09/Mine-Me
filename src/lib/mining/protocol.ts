@@ -46,15 +46,21 @@ export function parseRandomXTarget(targetHex: string): bigint {
  * vltrig-proxy's NiceHash mode assigns the last nonce byte to the downstream miner.
  * Preserve that fixed byte and increment only the lower 24-bit per-miner nonce.
  */
-export function incrementRandomXNonce(blob: Uint8Array): void {
+export function incrementRandomXNonce(blob: Uint8Array): boolean {
   if (blob.length < RANDOMX_NONCE_OFFSET + RANDOMX_NONCE_SIZE) {
     throw new Error("Le blob du pool est trop court pour un nonce RandomX.");
   }
   const view = new DataView(blob.buffer, blob.byteOffset, blob.byteLength);
   const current = view.getUint32(RANDOMX_NONCE_OFFSET, true);
   const fixedByte = current & 0xff00_0000;
-  const nextCounter = ((current & 0x00ff_ffff) + 1) & 0x00ff_ffff;
-  view.setUint32(RANDOMX_NONCE_OFFSET, fixedByte | nextCounter, true);
+  const counter = current & 0x00ff_ffff;
+
+  // NiceHash mode reserves the high byte for this downstream worker. There
+  // are only 2^24 nonce values per job/worker; never wrap and submit duplicates.
+  if (counter === 0x00ff_ffff) return false;
+
+  view.setUint32(RANDOMX_NONCE_OFFSET, fixedByte | (counter + 1), true);
+  return true;
 }
 
 export function randomXHashMeetsTarget(hash: Uint8Array, target: bigint): boolean {
