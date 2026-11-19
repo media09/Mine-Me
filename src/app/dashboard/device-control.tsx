@@ -215,9 +215,10 @@ export default function DeviceControl({ device }: { device: Device }) {
             engine = null;
           }
           if (engineRef.current) engineRef.current = null;
-          if (socketRef.current === socket) socketRef.current = null;
+          const wasCurrentSocket = socketRef.current === socket;
+          if (wasCurrentSocket) socketRef.current = null;
 
-          if (!cancelled && !intentionalCloseRef.current) {
+          if (wasCurrentSocket && !cancelled && !intentionalCloseRef.current) {
             setMiningState((current) => current === "running" || current === "connecting" ? "offline" : current);
           }
         };
@@ -361,8 +362,11 @@ export default function DeviceControl({ device }: { device: Device }) {
             setIntensity(next);
             engineRef.current?.setIntensity(next);
           }} />
-          <div className="intensity-scale"><span>Économie</span><span>Puissance</span></div>
+          <div className="intensity-scale"><span>Économie</span><span>Plus actif</span></div>
+          <p className="device-mini-note">Réglage de l’activité d’un worker RandomX dans le navigateur (un thread). Ce pourcentage ne représente pas directement l’utilisation totale de tous les cœurs.</p>
           <div className="device-actions">
+            {deviceStatus === "enrolled" && miningState !== "running" && miningState !== "connecting" &&
+              <button className="mini-action" type="button" disabled={busy} onClick={() => setConnectionAttempt((value) => value + 1)}>Relancer la connexion</button>}
             <button className="save-intensity" type="button" onClick={saveIntensity} disabled={busy || intensity === savedIntensity}>{busy ? "Enregistrement…" : "Enregistrer l’intensité"}</button>
             {canPause && <button className="mini-action" type="button" disabled={busy} onClick={() => changeParticipation("paused")}>Mettre en pause</button>}
             {canResume && <button className="mini-action" type="button" disabled={busy} onClick={() => changeParticipation("enrolled")}>Reprendre le calcul</button>}
