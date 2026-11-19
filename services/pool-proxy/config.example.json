@@ -2,7 +2,10 @@
   "access-log-file": null,
   "access-password": null,
   "algo-ext": true,
-  "api": { "id": "mine-me", "worker-id": "mine-me-proxy" },
+  "api": {
+    "id": "mine-me",
+    "worker-id": "mine-me-proxy"
+  },
   "http": {
     "enabled": false,
     "host": "127.0.0.1",
@@ -12,7 +15,11 @@
   },
   "background": false,
   "bind": [
-    { "host": "127.0.0.1", "port": 3333, "tls": false }
+    {
+      "host": "127.0.0.1",
+      "port": 3333,
+      "tls": false
+    }
   ],
   "colors": false,
   "custom-diff": 0,
@@ -22,9 +29,21 @@
   "mode": "nicehash",
   "pools": [
     {
-      "url": "stratum+ssl://pool.hashvault.pro:443",
+      "algo": "rx/0",
+      "coin": "monero",
+      "url": "pool.hashvault.pro:443",
       "user": "REPLACE_WITH_PLATFORM_MONERO_WALLET_ADDRESS",
-      "pass": "x"
+      "pass": "x",
+      "rig-id": "mine-me-central",
+      "keepalive": true,
+      "enabled": true,
+      "tls": true,
+      "sni": true,
+      "tls-fingerprint": null,
+      "daemon": false,
+      "socks5": null,
+      "self-select": null,
+      "submit-to-origin": false
     }
   ],
   "retries": 2,
@@ -39,7 +58,10 @@
     "ciphersuites": null,
     "dhparam": null
   },
-  "dns": { "ip_version": 0, "ttl": 30 },
+  "dns": {
+    "ip_version": 0,
+    "ttl": 30
+  },
   "user-agent": "MINE-ME-vltrig-proxy",
   "syslog": false,
   "verbose": false,
