@@ -60,3 +60,18 @@
 .copy-button{padding:9px 12px;border:1px solid #adff65;border-radius:6px;background:transparent;color:#adff65;font-size:11px;font-weight:700;cursor:pointer}
 .copy-feedback{color:#b9ffce;font-size:11px}
 .copy-error{color:#ffb8c0}
+
+.enrollment-message{margin:0 0 22px;padding:12px 14px;border:1px solid #40552f;border-radius:7px;background:#182417;color:#c8f5ae;font-size:11px;line-height:1.7}
+.enrollment-error{border-color:#68454a;background:#27191d;color:#ffc3c6}
+.device-row.device-card{display:block;padding:20px;border:1px solid #273440;border-radius:8px;background:#111923;margin-bottom:12px}
+.device-main{width:100%}
+.device-title{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.device-title strong{font-size:13px}
+.intensity-editor{max-width:520px;margin-top:18px;padding-top:16px;border-top:1px solid #273440}
+.intensity-label{display:flex;align-items:center;justify-content:space-between;color:#dbe2e9;font-size:11px}
+.intensity-label strong{color:#adff65;font:15px "DM Mono",monospace}
+.intensity-editor input[type=range]{width:100%;margin:16px 0 4px;accent-color:#adff65;cursor:pointer}
+.intensity-scale{display:flex;justify-content:space-between;color:#81909e;font-size:10px}
+.save-intensity{margin-top:14px;padding:9px 12px;border:1px solid #adff65;border-radius:6px;background:transparent;color:#adff65;font-size:11px;font-weight:700;cursor:pointer}
+.save-intensity:disabled{opacity:.4;cursor:not-allowed}
+.device-feedback{color:#b9ffce;font-size:10px;line-height:1.6}
