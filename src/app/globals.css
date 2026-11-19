@@ -30,6 +30,7 @@ a { color: inherit; }
 }
 .top-link { color: var(--muted); text-decoration: none; font-size: 12px; }
 .top-link span { color: var(--accent); margin-left: 8px; }
+.top-actions { display: flex; align-items: center; gap: 24px; }
 .hero { padding: 108px 0 92px; }
 .eyebrow, .section-kicker, .card-heading, .status-grid small, .principle-number {
   font: 11px "DM Mono", monospace; letter-spacing: .12em;
