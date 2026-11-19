@@ -9,6 +9,7 @@ import {
   normaliseProxyLine,
   signSessionToken,
   validateShareMessage,
+  validateTelemetryMessage,
   verifySessionToken,
 } from "./lib/protocol.mjs";
 
@@ -106,4 +107,25 @@ test("proxy JSON framing rejects arrays and overlong messages", () => {
   });
   assert.throws(() => normaliseProxyLine("[]"));
   assert.throws(() => normaliseProxyLine("x".repeat(65537)));
+});
+
+test("browser telemetry accepts only bounded diagnostic samples", () => {
+  assert.deepEqual(
+    validateTelemetryMessage({
+      type: "telemetry",
+      hashesPerSecond: 25.75,
+      hashesComputed: 52,
+      sampleSeconds: 2.02,
+    }),
+    { hashesPerSecond: 25.75, hashesComputed: 52, sampleSeconds: 2.02 },
+  );
+});
+
+test("browser telemetry rejects impossible, malformed or oversized values", () => {
+  assert.equal(validateTelemetryMessage({ type: "telemetry", hashesPerSecond: -1, hashesComputed: 5, sampleSeconds: 2 }), null);
+  assert.equal(validateTelemetryMessage({ type: "telemetry", hashesPerSecond: 1_000_001, hashesComputed: 5, sampleSeconds: 2 }), null);
+  assert.equal(validateTelemetryMessage({ type: "telemetry", hashesPerSecond: 5, hashesComputed: 1.5, sampleSeconds: 2 }), null);
+  assert.equal(validateTelemetryMessage({ type: "telemetry", hashesPerSecond: 5, hashesComputed: 5, sampleSeconds: 0 }), null);
+  assert.equal(validateTelemetryMessage({ type: "telemetry", hashesPerSecond: 5, hashesComputed: 5, sampleSeconds: 61 }), null);
+  assert.equal(validateTelemetryMessage({ type: "submit", hashesPerSecond: 5, hashesComputed: 5, sampleSeconds: 2 }), null);
 });
