@@ -38,7 +38,8 @@ See `services/pool-gateway/DEPLOYMENT.md` for the service topology and pre-activ
 - Browser compute runs only while the tab/session is active; browsers and mobile operating systems may throttle or suspend background tabs.
 - All mining proceeds belong to the platform. Participants receive no revenue share and have no withdrawable balance.
 - Pool-confirmed share acknowledgements and independently verified central-wallet receipts are authoritative.
-- Browser hashrate is local diagnostic telemetry, not evidence of accepted shares or earnings.
+- Browser-reported hashrate is stored as device diagnostic telemetry, labelled indicative in member/admin views. It can be falsified and is not evidence of accepted shares, pool revenue or participant earnings.
+- Only proxy-confirmed share responses enter the verified share ledger. The pool gateway is currently designed for one replica until a shared replay/lease store is added.
 - Pool host/port and wallet destination are server-side only. No client-selected upstream, open proxy, or exposed secrets.
 - Never expose Supabase service-role credentials, gateway signing secrets, pool credentials, or wallet private keys in browser code.
 - Do not fabricate hashrate, shares, earnings, or payouts.
