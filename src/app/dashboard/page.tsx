@@ -31,6 +31,11 @@ export default async function DashboardPage() {
     .eq("inviter_id", user.id)
     .order("created_at", { ascending: false });
 
+  const { data: platformSettings } = await supabase
+    .from("platform_settings")
+    .select("key, value")
+    .in("key", ["mining_enabled", "global_emergency_pause"]);
+
   const deviceIds = (devices ?? []).map((device) => device.id);
   const [shareResult, eventResult] = deviceIds.length
     ? await Promise.all([
@@ -50,6 +55,10 @@ export default async function DashboardPage() {
   const verifiedShares = shareResult.data ?? [];
   const deviceEvents = eventResult.data ?? [];
   const acceptedShareCount = verifiedShares.filter((share) => share.accepted).length;
+  const setting = (key: string) => platformSettings?.find((row) => row.key === key)?.value;
+  const miningEnabled = setting("mining_enabled") === true;
+  const emergencyPause = setting("global_emergency_pause") !== false;
+  const platformAllowsMining = miningEnabled && !emergencyPause;
 
   const siteUrl = (process.env.NEXT_PUBLIC_APP_URL ?? "https://app.sharedboost.com/mineme").replace(/\/$/, "");
   const referralUrl = profile?.referral_code && profile.referral_enabled
@@ -77,8 +86,10 @@ export default async function DashboardPage() {
         </article>
         <article className="dashboard-card">
           <span className="card-label">MINAGE</span>
-          <strong className="metric metric-state">Non activé</strong>
-          <p>Le module de minage réel sera activé uniquement après validation technique du pool.</p>
+          <strong className="metric metric-state">{platformAllowsMining ? "Autorisé" : "Désactivé"}</strong>
+          <p>{platformAllowsMining
+            ? "La plateforme autorise les connexions. Chaque appareil doit encore disposer d’une session valide et d’une connexion au pool."
+            : "Le calcul reste désactivé par les paramètres de sécurité de la plateforme."}</p>
         </article>
         <article className="dashboard-card">
           <span className="card-label">INVITATIONS VALIDÉES</span>
