@@ -50,7 +50,7 @@ function installJob(job: RandomXMiningJob) {
     throw new Error("Identifiant de travail invalide.");
   }
   const blob = hexToBytes(job.blob);
-  if (blob.length <= RANDOMX_NONCE_OFFSET + 4) {
+  if (blob.length < RANDOMX_NONCE_OFFSET + 4) {
     throw new Error("Le blob du pool est trop court pour un nonce RandomX.");
   }
   const target = parseRandomXTarget(job.target);
