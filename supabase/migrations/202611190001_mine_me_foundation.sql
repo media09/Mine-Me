@@ -1,7 +1,11 @@
 -- MINE-ME initial schema.
--- The auth trigger enforces both referral validation and the consent version on signup.
--- The public client receives read access only where an explicit RLS policy allows it.
--- Trusted server code must own all operational writes.
+-- Signup trigger enforces a valid referral and an explicit, versioned consent record.
+-- Client grants are minimal; every exposed public table has RLS enabled.
+
+create schema if not exists private;
+revoke all on schema private from public;
+revoke all on schema private from anon, authenticated;
+grant usage on schema private to supabase_auth_admin;
 
 create table if not exists public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
@@ -46,7 +50,7 @@ create table if not exists public.device_events (
   created_at timestamptz not null default now()
 );
 
--- Only pool-verified shares may be inserted by trusted backend reconciliation.
+-- Only pool-verified shares may be written by trusted reconciliation services.
 create table if not exists public.mining_share_ledger (
   id bigint generated always as identity primary key,
   device_id uuid not null references public.devices(id) on delete cascade,
@@ -85,8 +89,8 @@ create table if not exists public.audit_logs (
   created_at timestamptz not null default now()
 );
 
--- Signup requires a valid existing referral and the current consent acknowledgement.
-create or replace function public.handle_mine_me_signup()
+-- A trigger-only function in a non-exposed schema. It is not an RPC/API endpoint.
+create or replace function private.handle_mine_me_signup()
 returns trigger
 language plpgsql
 security definer
@@ -144,10 +148,12 @@ begin
 end;
 $$;
 
+revoke all on function private.handle_mine_me_signup() from public, anon, authenticated, service_role;
+
 drop trigger if exists on_auth_user_created_mine_me on auth.users;
 create trigger on_auth_user_created_mine_me
 after insert on auth.users
-for each row execute function public.handle_mine_me_signup();
+for each row execute function private.handle_mine_me_signup();
 
 -- RLS is enabled on every application table.
 alter table public.profiles enable row level security;
@@ -159,9 +165,16 @@ alter table public.central_wallet_receipts enable row level security;
 alter table public.platform_settings enable row level security;
 alter table public.audit_logs enable row level security;
 
--- Minimum client grants; rows are further restricted by RLS.
+-- October 30, 2026 Supabase Data API change: expose only tables and privileges explicitly needed.
+grant usage on schema public to authenticated, service_role;
 grant select on public.profiles, public.referrals, public.devices,
   public.device_events, public.mining_share_ledger to authenticated;
+
+-- Trusted server-side services only. Keep the service-role key out of all browser bundles.
+grant all on public.profiles, public.referrals, public.devices, public.device_events,
+  public.mining_share_ledger, public.central_wallet_receipts,
+  public.platform_settings, public.audit_logs to service_role;
+grant usage, select on all sequences in schema public to service_role;
 
 create policy profile_read_self on public.profiles
   for select to authenticated using (id = (select auth.uid()));
@@ -187,6 +200,4 @@ create policy share_ledger_read_own on public.mining_share_ledger
     where d.id = device_id and d.user_id = (select auth.uid())
   ));
 
--- There are deliberately no client write policies.
--- Central wallet receipts, settings, audit data and admin operations are server-only.
--- Never put a service-role key in browser code. Apply this migration only after reviewing it.
+-- Intentionally no client write policies. Central wallet, settings and audit tables are server-only.
