@@ -186,6 +186,11 @@ self.onmessage = (message: MessageEvent<RandomXWorkerCommand>) => {
           break;
       }
     } catch (error) {
+      // A malformed/new job must not leave the worker hashing a stale job indefinitely.
+      running = false;
+      paused = true;
+      activeJob = null;
+      activeBlob = null;
       emit({
         type: "error",
         message: error instanceof Error ? error.message : "Erreur inconnue du moteur RandomX.",
