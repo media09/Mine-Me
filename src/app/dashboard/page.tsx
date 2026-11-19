@@ -29,6 +29,26 @@ export default async function DashboardPage() {
     .eq("inviter_id", user.id)
     .order("created_at", { ascending: false });
 
+  const deviceIds = (devices ?? []).map((device) => device.id);
+  const [shareResult, eventResult] = deviceIds.length
+    ? await Promise.all([
+        supabase.from("mining_share_ledger")
+          .select("id, pool_share_id, accepted, difficulty, verified_at")
+          .in("device_id", deviceIds)
+          .order("verified_at", { ascending: false })
+          .limit(25),
+        supabase.from("device_events")
+          .select("id, event_type, details, created_at, device_id")
+          .in("device_id", deviceIds)
+          .order("created_at", { ascending: false })
+          .limit(25),
+      ])
+    : [{ data: [] }, { data: [] }];
+
+  const verifiedShares = shareResult.data ?? [];
+  const deviceEvents = eventResult.data ?? [];
+  const acceptedShareCount = verifiedShares.filter((share) => share.accepted).length;
+
   const siteUrl = (process.env.NEXT_PUBLIC_APP_URL ?? "https://app.sharedboost.com/mineme").replace(/\/$/, "");
   const referralUrl = profile?.referral_code
     ? `${siteUrl}/register?ref=${encodeURIComponent(profile.referral_code)}`
@@ -63,6 +83,11 @@ export default async function DashboardPage() {
           <strong className="metric">{referrals?.length ?? 0}</strong>
           <p>Comptes créés avec votre code de parrainage.</p>
         </article>
+        <article className="dashboard-card">
+          <span className="card-label">SHARES ACCEPTÉES VÉRIFIÉES</span>
+          <strong className="metric">{acceptedShareCount}</strong>
+          <p>Sur les 25 dernières shares vérifiées de vos appareils.</p>
+        </article>
         <article className="dashboard-card referral-card">
           <span className="card-label">VOTRE PARRAINAGE</span>
           <strong className="referral-code">{profile?.referral_code ?? "En attente"}</strong>
@@ -77,6 +102,31 @@ export default async function DashboardPage() {
         ) : (
           <div className="device-list">{devices.map((device) => <DeviceControl key={device.id} device={device} />)}</div>
         )}
+      </section>
+      <section className="device-section">
+        <div className="section-title"><div><span className="eyebrow">HISTORIQUE VÉRIFIÉ</span><h2>Activité de calcul</h2></div></div>
+        <div className="admin-table-wrap"><table className="admin-table">
+          <thead><tr><th>Référence pool</th><th>Résultat</th><th>Difficulté</th><th>Vérification</th></tr></thead>
+          <tbody>{verifiedShares.map((share) => <tr key={share.id}>
+            <td><code>{share.pool_share_id}</code></td><td>{share.accepted ? "Acceptée" : "Rejetée"}</td>
+            <td>{share.difficulty ?? "—"}</td>
+            <td>{new Intl.DateTimeFormat("fr-FR", { dateStyle: "medium", timeStyle: "short" }).format(new Date(share.verified_at))}</td>
+          </tr>)}
+          {!verifiedShares.length && <tr><td colSpan={4}>Aucune share vérifiée enregistrée.</td></tr>}</tbody>
+        </table></div>
+      </section>
+
+      <section className="device-section">
+        <div className="section-title"><div><span className="eyebrow">JOURNAL DES APPAREILS</span><h2>Historique des appareils</h2></div></div>
+        <div className="admin-table-wrap"><table className="admin-table">
+          <thead><tr><th>Worker</th><th>Événement</th><th>Détails</th><th>Date</th></tr></thead>
+          <tbody>{deviceEvents.map((event) => <tr key={event.id}>
+            <td>{devices?.find((device) => device.id === event.device_id)?.worker_code ?? "—"}</td>
+            <td>{event.event_type}</td><td>{event.details && Object.keys(event.details).length ? JSON.stringify(event.details) : "—"}</td>
+            <td>{new Intl.DateTimeFormat("fr-FR", { dateStyle: "medium", timeStyle: "short" }).format(new Date(event.created_at))}</td>
+          </tr>)}
+          {!deviceEvents.length && <tr><td colSpan={4}>Aucun événement enregistré pour vos appareils.</td></tr>}</tbody>
+        </table></div>
       </section>
       <p className="dashboard-disclaimer">Les contributions éventuelles sont des données internes de suivi. Elles ne représentent pas un solde personnel et ne sont pas retirables.</p>
     </main>
