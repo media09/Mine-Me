@@ -41,7 +41,9 @@ create table if not exists public.devices (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references public.profiles(id) on delete cascade,
   installation_id uuid not null,
-  worker_code text not null unique,
+  worker_code text not null unique default (
+    'MM-' || upper(replace(gen_random_uuid()::text, '-', ''))
+  ),
   label text,
   browser_family text,
   platform_family text,
@@ -210,6 +212,13 @@ grant usage on schema public to authenticated, service_role;
 grant select on public.profiles, public.referrals, public.devices,
   public.device_events, public.mining_share_ledger to authenticated;
 
+-- Device enrollment can be performed by the signed-in participant without a service-role secret.
+-- Identity and status are fixed by RLS/defaults; participants cannot write worker_code or status.
+grant insert (user_id, installation_id, label, browser_family, platform_family, hardware_threads)
+  on public.devices to authenticated;
+grant update (label, browser_family, platform_family, hardware_threads, last_seen_at, intensity_percent)
+  on public.devices to authenticated;
+
 -- Trusted server-side services only. Keep the service-role key out of all browser bundles.
 grant all on public.profiles, public.referrals, public.devices, public.device_events,
   public.mining_share_ledger, public.central_wallet_receipts,
@@ -225,6 +234,19 @@ create policy referral_read_own on public.referrals
 
 create policy device_read_self on public.devices
   for select to authenticated using (user_id = (select auth.uid()));
+
+create policy device_enroll_self on public.devices
+  for insert to authenticated
+  with check (
+    user_id = (select auth.uid())
+    and status = 'enrolled'
+    and intensity_percent = 20
+  );
+
+create policy device_update_self on public.devices
+  for update to authenticated
+  using (user_id = (select auth.uid()))
+  with check (user_id = (select auth.uid()));
 
 create policy device_events_read_own on public.device_events
   for select to authenticated
