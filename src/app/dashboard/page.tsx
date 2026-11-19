@@ -13,9 +13,11 @@ export default async function DashboardPage() {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("display_name, referral_code, role, consented_at")
+    .select("display_name, referral_code, role, consented_at, account_status, referral_enabled")
     .eq("id", user.id)
     .maybeSingle();
+
+  if (profile?.account_status === "suspended") redirect("/mineme/account-suspended");
 
   const { data: devices } = await supabase
     .from("devices")
@@ -50,7 +52,7 @@ export default async function DashboardPage() {
   const acceptedShareCount = verifiedShares.filter((share) => share.accepted).length;
 
   const siteUrl = (process.env.NEXT_PUBLIC_APP_URL ?? "https://app.sharedboost.com/mineme").replace(/\/$/, "");
-  const referralUrl = profile?.referral_code
+  const referralUrl = profile?.referral_code && profile.referral_enabled
     ? `${siteUrl}/register?ref=${encodeURIComponent(profile.referral_code)}`
     : null;
 
