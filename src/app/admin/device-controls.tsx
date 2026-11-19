@@ -20,11 +20,23 @@ export default function AdminDeviceControls({
     setFeedback("");
     try {
       const supabase = createClient();
-      const { error } = await supabase.rpc("admin_set_device_status", {
-        p_device_id: deviceId,
-        p_status: nextStatus,
-      });
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError || !user) throw new Error("Session administrateur introuvable.");
+
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("role, account_status")
+        .eq("id", user.id)
+        .single();
+      if (profileError || profile?.role !== "admin" || profile.account_status !== "active") {
+        throw new Error("Accès administrateur refusé.");
+      }
+
+      const { error } = await supabase.from("devices")
+        .update({ status: nextStatus })
+        .eq("id", deviceId);
       if (error) throw error;
+
       setFeedback("Mis à jour");
       router.refresh();
     } catch (error) {
