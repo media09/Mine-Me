@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { signOutAction } from "./actions";
 import CopyReferralLink from "./copy-referral-link";
 import AutoEnrollDevice from "./auto-enroll-device";
+import DeviceControl from "./device-control";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -72,9 +73,9 @@ export default async function DashboardPage() {
       <section className="device-section">
         <div className="section-title"><div><span className="eyebrow">VOTRE FLOTTE</span><h2>Mes appareils</h2></div></div>
         {!devices?.length ? (
-          <div className="empty-state"><strong>Aucun appareil enregistré</strong><p>Votre navigateur pourra être enregistré après activation du module de calcul et avec votre consentement.</p></div>
+          <div className="empty-state"><strong>Aucun appareil enregistré</strong><p>L’association du navigateur apparaîtra ici après validation de votre consentement et de la configuration du compte.</p></div>
         ) : (
-          <div className="device-list">{devices.map((device) => <article className="device-row" key={device.id}><div><strong>{device.label || device.worker_code}</strong><small>{device.worker_code}</small></div><span className="device-status">{device.status}</span><span>{device.intensity_percent}%</span></article>)}</div>
+          <div className="device-list">{devices.map((device) => <DeviceControl key={device.id} device={device} />)}</div>
         )}
       </section>
       <p className="dashboard-disclaimer">Les contributions éventuelles sont des données internes de suivi. Elles ne représentent pas un solde personnel et ne sont pas retirables.</p>
