@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { signOutAction } from "./actions";
 import CopyReferralLink from "./copy-referral-link";
+import AutoEnrollDevice from "./auto-enroll-device";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -44,6 +45,7 @@ export default async function DashboardPage() {
         <p>Voici votre espace personnel MINE-ME.</p>
       </section>
       {profile?.role === "admin" && <Link className="admin-shortcut" href="/admin">Ouvrir l’administration ↗</Link>}
+      <AutoEnrollDevice />
       <section className="dashboard-grid">
         <article className="dashboard-card">
           <span className="card-label">APPAREILS ENREGISTRÉS</span>
