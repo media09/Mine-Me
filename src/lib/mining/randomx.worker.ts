@@ -115,6 +115,7 @@ async function runLoop() {
           type: "hashrate",
           hashesPerSecond: hashesSinceReport / elapsedSeconds,
           hashesComputed: hashesSinceReport,
+          sampleSeconds: elapsedSeconds,
         });
         hashesSinceReport = 0;
         reportStartedAt = now;
