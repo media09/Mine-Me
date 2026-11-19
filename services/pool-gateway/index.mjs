@@ -646,7 +646,6 @@ wss.on("connection", (ws) => {
     submittedNonces: new Set(),
     gatewaySessionId: null,
     lastTelemetryAt: 0,
-    lastTelemetryAt: 0,
   };
   sessions.add(session);
   session.authTimer = setTimeout(() => {
