@@ -114,7 +114,7 @@ async function readPlatformState(claims, { allowRunning = false } = {}) {
     throw new Error("Current computing consent is missing.");
   }
   if (device.worker_code !== claims.workerCode) throw new Error("Worker identity mismatch.");
-  const allowedDeviceStatuses = allowRunning ? ["enrolled", "running"] : ["enrolled"];
+  const allowedDeviceStatuses = ["enrolled", "running"];
   if (!allowedDeviceStatuses.includes(device.status)) {
     throw new Error("Device is not enrolled or has already been paused/stopped.");
   }
@@ -142,7 +142,7 @@ async function markDeviceRunning(claims) {
     .update({ status: "running", last_seen_at: new Date().toISOString() })
     .eq("id", claims.deviceId)
     .eq("user_id", claims.sub)
-    .eq("status", "enrolled")
+    .in("status", ["enrolled", "running"])
     .select("id, status, intensity_percent")
     .maybeSingle();
 
