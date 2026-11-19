@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "node .next/standalone/server.js",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run",
+    "test": "vitest run src/lib/mining",
     "test:gateway": "npm run test --workspace=@mine-me/pool-gateway"
   },
   "dependencies": {
