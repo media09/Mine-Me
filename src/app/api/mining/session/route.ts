@@ -110,7 +110,7 @@ export async function POST(request: NextRequest) {
       if (resumeError || !resumed || resumed.status !== "enrolled") {
         return jsonError("Cet appareil n’a pas pu être réactivé. Actualisez votre espace.", 409);
       }
-    } else if (device.status !== "enrolled") {
+    } else if (device.status !== "enrolled" && device.status !== "running") {
       return jsonError("Cet appareil est en pause ou arrêté. Réactivez-le depuis votre espace membre.", 409);
     }
 
