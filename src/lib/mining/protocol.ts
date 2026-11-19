@@ -56,3 +56,11 @@ export function incrementRandomXNonce(blob: Uint8Array): void {
   const nextCounter = ((current & 0x00ff_ffff) + 1) & 0x00ff_ffff;
   view.setUint32(RANDOMX_NONCE_OFFSET, fixedByte | nextCounter, true);
 }
+
+export function randomXHashMeetsTarget(hash: Uint8Array, target: bigint): boolean {
+  if (hash.byteLength !== 32) {
+    throw new Error("Une empreinte RandomX doit contenir exactement 32 octets.");
+  }
+  const view = new DataView(hash.buffer, hash.byteOffset, hash.byteLength);
+  return view.getBigUint64(24, true) < target;
+}
