@@ -41,7 +41,8 @@
 - [x] Member suspension, referral disablement and device block controls.
 - [x] Global mining enablement gate, emergency pause and maximum intensity ceiling enforced in the database.
 - [x] Central-wallet receipt schema; no participant wallet balance or payout capability.
-- [ ] Add live pool health and device heartbeat/hashrate telemetry in the admin console.
+- [x] Store and display browser-reported per-device hashrate diagnostics, clearly separated from pool shares and earnings.
+- [ ] Add live pool health and server-verified heartbeat/accepted-share telemetry in the admin console.
 - [ ] Implement pool API reconciliation and central-wallet transaction verification.
 - [ ] Prove share-to-worker attribution across proxy sessions without accepting browser-declared earnings.
 
