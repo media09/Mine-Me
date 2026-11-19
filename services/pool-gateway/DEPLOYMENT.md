@@ -91,5 +91,7 @@ The gateway health endpoint is `http://127.0.0.1:8081/healthz`; keep it private 
 8. Run controlled tests with a disposable worker and confirm pool-side accepted and rejected share acknowledgements.
 9. Confirm gateway revalidation disconnects a worker after account suspension, consent mismatch, admin pause, device pause or emergency stop.
 10. Reconcile a real central-wallet payout before public activation.
+11. Confirm the gateway rejects duplicate/replayed tokens, duplicate device sessions, paused devices, suspended accounts, invalid consent versions and exhausted per-device nonce partitions.
+12. Configure monitoring for pending-auth caps, per-IP connection throttles, proxy reconnects, pool rejection rates and DB cleanup failures.
 
 Keep `mining_enabled=false` and `global_emergency_pause=true` until every item above is complete. A configured gateway URL is not proof that the proxy or upstream pool is healthy.
