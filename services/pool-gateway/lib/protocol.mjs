@@ -125,3 +125,24 @@ export function normaliseProxyLine(line) {
   }
   return parsed;
 }
+
+/**
+ * Browser telemetry is untrusted diagnostics. It may never be used as proof
+ * of accepted pool shares, mining proceeds or participant earnings.
+ */
+export function validateTelemetryMessage(message) {
+  if (!message || message.type !== "telemetry") return null;
+  const hashesPerSecond = message.hashesPerSecond;
+  const hashesComputed = message.hashesComputed;
+  const sampleSeconds = message.sampleSeconds;
+
+  if (
+    typeof hashesPerSecond !== "number" || !Number.isFinite(hashesPerSecond) ||
+    hashesPerSecond < 0 || hashesPerSecond > 1_000_000 ||
+    !Number.isSafeInteger(hashesComputed) || hashesComputed < 0 ||
+    typeof sampleSeconds !== "number" || !Number.isFinite(sampleSeconds) ||
+    sampleSeconds < 0.5 || sampleSeconds > 60
+  ) return null;
+
+  return { hashesPerSecond, hashesComputed, sampleSeconds };
+}
