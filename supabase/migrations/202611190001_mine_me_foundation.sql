@@ -5,7 +5,7 @@
 create schema if not exists private;
 revoke all on schema private from public;
 revoke all on schema private from anon, authenticated, service_role;
-grant usage on schema private to supabase_auth_admin;
+grant usage on schema private to supabase_auth_admin, authenticated;
 
 -- One-time first-admin code. Kept outside the exposed public schema.
 create table if not exists private.bootstrap_codes (
@@ -105,6 +105,25 @@ create table if not exists public.audit_logs (
 );
 
 -- A trigger-only function in a non-exposed schema. It is not an RPC/API endpoint.
+-- RLS helper for admin-only reads and settings control. It exposes no admin data.
+create or replace function private.is_mine_me_admin()
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $
+  select exists (
+    select 1
+    from public.profiles p
+    where p.id = (select auth.uid())
+      and p.role = 'admin'
+  );
+$;
+
+revoke all on function private.is_mine_me_admin() from public, anon, service_role;
+grant execute on function private.is_mine_me_admin() to authenticated;
+
 create or replace function private.handle_mine_me_signup()
 returns trigger
 language plpgsql
@@ -210,7 +229,8 @@ alter table public.audit_logs enable row level security;
 -- October 30, 2026 Supabase Data API change: expose only tables and privileges explicitly needed.
 grant usage on schema public to authenticated, service_role;
 grant select on public.profiles, public.referrals, public.devices,
-  public.device_events, public.mining_share_ledger to authenticated;
+  public.device_events, public.mining_share_ledger,
+  public.central_wallet_receipts, public.platform_settings, public.audit_logs to authenticated;
 
 -- Device enrollment can be performed by the signed-in participant without a service-role secret.
 -- Identity and status are fixed by RLS/defaults; participants cannot write worker_code or status.
@@ -218,6 +238,7 @@ grant insert (user_id, installation_id, label, browser_family, platform_family, 
   on public.devices to authenticated;
 grant update (label, browser_family, platform_family, hardware_threads, last_seen_at, intensity_percent)
   on public.devices to authenticated;
+grant update (value, updated_at) on public.platform_settings to authenticated;
 
 -- Trusted server-side services only. Keep the service-role key out of all browser bundles.
 grant all on public.profiles, public.referrals, public.devices, public.device_events,
@@ -228,12 +249,21 @@ grant usage, select on all sequences in schema public to service_role;
 create policy profile_read_self on public.profiles
   for select to authenticated using (id = (select auth.uid()));
 
+create policy profile_read_admin on public.profiles
+  for select to authenticated using (private.is_mine_me_admin());
+
 create policy referral_read_own on public.referrals
   for select to authenticated
   using (inviter_id = (select auth.uid()) or invitee_id = (select auth.uid()));
 
+create policy referral_read_admin on public.referrals
+  for select to authenticated using (private.is_mine_me_admin());
+
 create policy device_read_self on public.devices
   for select to authenticated using (user_id = (select auth.uid()));
+
+create policy device_read_admin on public.devices
+  for select to authenticated using (private.is_mine_me_admin());
 
 create policy device_enroll_self on public.devices
   for insert to authenticated
@@ -255,11 +285,47 @@ create policy device_events_read_own on public.device_events
     where d.id = device_id and d.user_id = (select auth.uid())
   ));
 
+create policy device_events_read_admin on public.device_events
+  for select to authenticated using (private.is_mine_me_admin());
+
 create policy share_ledger_read_own on public.mining_share_ledger
   for select to authenticated
   using (exists (
     select 1 from public.devices d
     where d.id = device_id and d.user_id = (select auth.uid())
   ));
+
+create policy share_ledger_read_admin on public.mining_share_ledger
+  for select to authenticated using (private.is_mine_me_admin());
+
+create policy central_wallet_receipts_read_admin on public.central_wallet_receipts
+  for select to authenticated using (private.is_mine_me_admin());
+
+create policy platform_settings_read_admin on public.platform_settings
+  for select to authenticated using (private.is_mine_me_admin());
+
+create policy platform_settings_update_admin on public.platform_settings
+  for update to authenticated
+  using (private.is_mine_me_admin())
+  with check (private.is_mine_me_admin());
+
+create policy audit_logs_read_admin on public.audit_logs
+  for select to authenticated using (private.is_mine_me_admin());
+
+create index if not exists devices_user_created_idx
+  on public.devices (user_id, created_at desc);
+create index if not exists referrals_inviter_created_idx
+  on public.referrals (inviter_id, created_at desc);
+create index if not exists device_events_device_created_idx
+  on public.device_events (device_id, created_at desc);
+create index if not exists mining_shares_device_verified_idx
+  on public.mining_share_ledger (device_id, verified_at desc);
+create index if not exists audit_logs_created_idx
+  on public.audit_logs (created_at desc);
+
+insert into public.platform_settings (key, value) values
+  ('global_emergency_pause', 'true'::jsonb),
+  ('global_max_intensity_percent', '80'::jsonb)
+on conflict (key) do nothing;
 
 -- Intentionally no client write policies. Central wallet, settings and audit tables are server-only.
