@@ -35,6 +35,7 @@ function statusLabel(status: string) {
   switch (status) {
     case "running": return "Calcul en cours";
     case "connecting": return "Connexion au pool…";
+    case "waiting-job": return "En attente d’un nouveau travail";
     case "enrolled": return "Associé — en attente";
     case "paused": return "En pause";
     case "stopped": return "Arrêté";
@@ -170,6 +171,12 @@ export default function DeviceControl({
                       result: workerEvent.result,
                     }));
                   }
+                } else if (workerEvent.type === "nonce-exhausted") {
+                  setMiningState("waiting-job");
+                  setFeedback("La plage de nonces de ce travail est épuisée. Le navigateur attend une nouvelle tâche du pool.");
+                } else if (workerEvent.type === "ready") {
+                  setMiningState("running");
+                  setFeedback("");
                 } else if (workerEvent.type === "error") {
                   setMiningState("error");
                   setFeedback(workerEvent.message);
@@ -190,6 +197,8 @@ export default function DeviceControl({
                 target: job.target,
                 seedHash: job.seedHash,
               });
+              setMiningState("running");
+              setFeedback("");
             }
             return;
           }
