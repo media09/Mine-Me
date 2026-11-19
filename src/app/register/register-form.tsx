@@ -41,6 +41,7 @@ export default function RegisterForm({
         email: email.trim(),
         password,
         options: {
+          emailRedirectTo: `${window.location.origin}/mineme/auth/callback`,
           data: {
             display_name: name.trim(),
             referral_code: referralCode.trim().toUpperCase(),
