@@ -46,10 +46,16 @@ function statusLabel(status: string) {
   }
 }
 
-export default function DeviceControl({ device }: { device: Device }) {
+export default function DeviceControl({
+  device,
+  maxIntensityPercent,
+}: {
+  device: Device;
+  maxIntensityPercent: number;
+}) {
   const router = useRouter();
-  const [intensity, setIntensity] = useState(device.intensity_percent);
-  const [savedIntensity, setSavedIntensity] = useState(device.intensity_percent);
+  const [intensity, setIntensity] = useState(Math.min(device.intensity_percent, maxIntensityPercent));
+  const [savedIntensity, setSavedIntensity] = useState(Math.min(device.intensity_percent, maxIntensityPercent));
   const [deviceStatus, setDeviceStatus] = useState(device.status);
   const [miningState, setMiningState] = useState(
     device.status === "running" ? "offline" : device.status,
@@ -357,13 +363,13 @@ export default function DeviceControl({ device }: { device: Device }) {
         </div>
         <div className="intensity-editor">
           <div className="intensity-label"><label htmlFor={`intensity-${device.id}`}>Intensité souhaitée</label><strong>{intensity}%</strong></div>
-          <input id={`intensity-${device.id}`} type="range" min="1" max="80" step="1" value={intensity} onChange={(event) => {
+          <input id={`intensity-${device.id}`} type="range" min="1" max={maxIntensityPercent} step="1" value={intensity} onChange={(event) => {
             const next = Number(event.target.value);
             setIntensity(next);
             engineRef.current?.setIntensity(next);
           }} />
           <div className="intensity-scale"><span>Économie</span><span>Plus actif</span></div>
-          <p className="device-mini-note">Réglage de l’activité d’un worker RandomX dans le navigateur (un thread). Ce pourcentage ne représente pas directement l’utilisation totale de tous les cœurs.</p>
+          <p className="device-mini-note">Réglage de l’activité d’un worker RandomX dans le navigateur (un thread). Plafond autorisé par la plateforme : {maxIntensityPercent}%. Ce pourcentage ne représente pas directement l’utilisation totale de tous les cœurs.</p>
           <div className="device-actions">
             {deviceStatus === "enrolled" && miningState !== "running" && miningState !== "connecting" &&
               <button className="mini-action" type="button" disabled={busy} onClick={() => setConnectionAttempt((value) => value + 1)}>Relancer la connexion</button>}
