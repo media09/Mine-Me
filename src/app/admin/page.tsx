@@ -58,7 +58,7 @@ export default async function AdminPage() {
       .order("confirmed_at", { ascending: false }).limit(50),
     supabase.from("platform_settings")
       .select("key, value")
-      .in("key", ["global_emergency_pause", "global_max_intensity_percent"]),
+      .in("key", ["mining_enabled", "global_emergency_pause", "global_max_intensity_percent"]),
     supabase.from("audit_logs")
       .select("id, actor_id, action, target_type, target_id, created_at", { count: "exact" })
       .order("created_at", { ascending: false }).limit(50),
@@ -71,6 +71,8 @@ export default async function AdminPage() {
   const receipts = receiptsResult.data ?? [];
   const audits = auditResult.data ?? [];
   const setting = (key: string) => settingsResult.data?.find((item) => item.key === key)?.value;
+  const miningEnabledValue = setting("mining_enabled");
+  const miningEnabled = miningEnabledValue === true;
   const emergencyPauseValue = setting("global_emergency_pause");
   const emergencyPause = emergencyPauseValue === undefined ? true : emergencyPauseValue === true;
   const maxIntensityValue = Number(setting("global_max_intensity_percent") ?? 80);
@@ -109,7 +111,7 @@ export default async function AdminPage() {
         <article className="dashboard-card"><span className="card-label">JOURNAL D’AUDIT</span><strong className="metric">{auditResult.count ?? audits.length}</strong><p>Actions administratives historisées.</p></article>
       </section>
 
-      <AdminControls initialEmergencyPause={emergencyPause} initialMaxIntensity={maxIntensity} />
+      <AdminControls initialMiningEnabled={miningEnabled} initialEmergencyPause={emergencyPause} initialMaxIntensity={maxIntensity} />
 
       <section className="admin-section">
         <div className="admin-section-heading"><span className="eyebrow">01 / MEMBRES</span><h2>Comptes utilisateurs</h2></div>
