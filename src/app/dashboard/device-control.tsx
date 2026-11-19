@@ -140,6 +140,7 @@ export default function DeviceControl({
         };
 
         socket.onmessage = (event) => {
+          if (cancelled || socketRef.current !== socket) return;
           let message: GatewayMessage;
           try {
             message = JSON.parse(String(event.data)) as GatewayMessage;
@@ -225,7 +226,7 @@ export default function DeviceControl({
         };
 
         socket.onerror = () => {
-          if (!cancelled) {
+          if (!cancelled && socketRef.current === socket) {
             setMiningState("error");
             setFeedback("Impossible de joindre la passerelle de calcul sécurisée.");
           }
@@ -237,7 +238,7 @@ export default function DeviceControl({
             engine.dispose();
             engine = null;
           }
-          if (engineRef.current) engineRef.current = null;
+          if (engine && engineRef.current === engine) engineRef.current = null;
           const wasCurrentSocket = socketRef.current === socket;
           if (wasCurrentSocket) socketRef.current = null;
 
@@ -262,7 +263,7 @@ export default function DeviceControl({
         engine.dispose();
         engine = null;
       }
-      if (engineRef.current) engineRef.current = null;
+      if (engine && engineRef.current === engine) engineRef.current = null;
       if (socket && socket.readyState < WebSocket.CLOSING) {
         intentionalCloseRef.current = true;
         socket.close(1000, "dashboard closed");
