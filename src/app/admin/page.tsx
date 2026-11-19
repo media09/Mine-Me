@@ -35,6 +35,7 @@ export default async function AdminPage() {
   const [
     membersResult,
     devicesResult,
+    telemetryResult,
     referralsResult,
     sharesResult,
     receiptsResult,
@@ -47,6 +48,9 @@ export default async function AdminPage() {
     supabase.from("devices")
       .select("id, user_id, worker_code, label, browser_family, platform_family, hardware_threads, intensity_percent, status, last_seen_at, created_at", { count: "exact" })
       .order("created_at", { ascending: false }).limit(100),
+    supabase.from("device_telemetry")
+      .select("device_id, reported_hashrate, hashes_computed, sample_seconds, measured_at, received_at")
+      .order("received_at", { ascending: false }).limit(100),
     supabase.from("referrals")
       .select("id, inviter_id, invitee_id, referral_code, created_at", { count: "exact" })
       .order("created_at", { ascending: false }).limit(100),
@@ -66,6 +70,8 @@ export default async function AdminPage() {
 
   const members = membersResult.data ?? [];
   const devices = devicesResult.data ?? [];
+  const telemetry = telemetryResult.data ?? [];
+  const telemetryByDevice = new Map(telemetry.map((sample) => [sample.device_id, sample]));
   const referrals = referralsResult.data ?? [];
   const shares = sharesResult.data ?? [];
   const receipts = receiptsResult.data ?? [];
@@ -99,7 +105,7 @@ export default async function AdminPage() {
 
       <div className="admin-warning">
         <strong>Minage réel désactivé</strong>
-        <p>Le moteur WASM, le passerelle WSS et la vérification des shares ne sont pas encore déployés. Cette console n’affiche que les données réellement enregistrées dans la base. Aucun chiffre de production n’est simulé.</p>
+        <p>Le moteur navigateur et la passerelle WSS sont encore en phase de validation et ne sont pas connectés à un pool de production. Les taux navigateur sont des diagnostics déclarés par le client ; seules les réponses du proxy confirment les shares acceptées ou rejetées. Aucune donnée de revenu n’est simulée.</p>
       </div>
 
       <section className="dashboard-grid admin-metrics">
@@ -133,15 +139,17 @@ export default async function AdminPage() {
       <section className="admin-section">
         <div className="admin-section-heading"><span className="eyebrow">02 / APPAREILS</span><h2>Flotte des navigateurs</h2></div>
         <div className="admin-table-wrap"><table className="admin-table">
-          <thead><tr><th>Worker</th><th>Membre</th><th>Plateforme / navigateur</th><th>Cœurs logiques déclarés</th><th>Intensité souhaitée</th><th>État</th><th>Dernier contact</th><th>Actions</th></tr></thead>
+          <thead><tr><th>Worker</th><th>Membre</th><th>Plateforme / navigateur</th><th>Cœurs logiques déclarés</th><th>Intensité souhaitée</th><th>État</th><th>Hashrate navigateur (indicatif)</th><th>Mesuré le</th><th>Dernier contact</th><th>Actions</th></tr></thead>
           <tbody>{devices.map((device) => <tr key={device.id}>
             <td><code>{device.worker_code}</code></td>
             <td>{userNames.get(device.user_id) || shortId(device.user_id)}</td>
             <td>{device.platform_family || "—"} / {device.browser_family || "—"}</td>
             <td>{device.hardware_threads ?? "—"}</td><td>{device.intensity_percent}%</td><td>{device.status}</td>
+            <td>{telemetryByDevice.has(device.id) ? `${Number(telemetryByDevice.get(device.id)?.reported_hashrate ?? 0).toFixed(2)} H/s` : "—"}</td>
+            <td>{formatDate(telemetryByDevice.get(device.id)?.measured_at)}</td>
             <td>{formatDate(device.last_seen_at)}</td><td><AdminDeviceControls deviceId={device.id} status={device.status} /></td>
           </tr>)}
-          {!devices.length && <tr><td colSpan={8}>Aucun appareil associé.</td></tr>}</tbody>
+          {!devices.length && <tr><td colSpan={10}>Aucun appareil associé.</td></tr>}</tbody>
         </table></div>
       </section>
 
