@@ -6,6 +6,7 @@ import {
   hexToBytes,
   incrementRandomXNonce,
   parseRandomXTarget,
+  randomXHashMeetsTarget,
   RANDOMX_NONCE_OFFSET,
 } from "./protocol";
 import type {
@@ -89,12 +90,7 @@ async function runLoop() {
       if (!running) break;
 
       if (jobAtHashStart === activeJob && activeBlob === blob) {
-        const hashView = new DataView(hash.buffer, hash.byteOffset, hash.byteLength);
-        if (hash.byteLength !== 32) {
-          throw new Error("Le moteur RandomX a retourné une empreinte invalide.");
-        }
-
-        if (hashView.getBigUint64(24, true) < activeTarget) {
+        if (randomXHashMeetsTarget(hash, activeTarget)) {
           const nonce = blob.slice(RANDOMX_NONCE_OFFSET, RANDOMX_NONCE_OFFSET + 4);
           emit({
             type: "share-found",
