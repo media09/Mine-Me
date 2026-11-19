@@ -28,7 +28,8 @@
 - [x] Audit and pin the RandomX WASM library; include its BSD-3-Clause license and known-answer test.
 - [x] Add RandomX worker protocol tests for target comparison and fixed per-worker nonce-byte preservation.
 - [x] Add short-lived HMAC-signed session tokens tied to user, consent, device and worker.
-- [x] Add persistent Node.js WSS gateway with exact-origin allowlist, rate limits and short session authentication.
+- [x] Add database-backed per-device gateway leases so reconnects and stale socket cleanup do not race.
+- [x] Add persistent Node.js WSS gateway with exact-origin allowlist, pre-auth/per-IP rate limits and session authentication.
 - [x] Add fixed loopback Stratum proxy target and HashVault proxy configuration template.
 - [x] Add gateway tests for signed tokens, message framing, job validation and worker identity.
 - [ ] Deploy gateway + HashVault proxy on an always-on host and verify TLS/upstream connectivity.
@@ -41,7 +42,7 @@
 - [x] Member suspension, referral disablement and device block controls.
 - [x] Global mining enablement gate, emergency pause and maximum intensity ceiling enforced in the database.
 - [x] Central-wallet receipt schema; no participant wallet balance or payout capability.
-- [x] Store and display browser-reported per-device hashrate diagnostics, clearly separated from pool shares and earnings.
+- [x] Store and display bounded browser-reported per-device hashrate diagnostics, clearly separated from pool shares and earnings.
 - [ ] Add live pool health and server-verified heartbeat/accepted-share telemetry in the admin console.
 - [ ] Implement pool API reconciliation and central-wallet transaction verification.
 - [ ] Prove share-to-worker attribution across proxy sessions without accepting browser-declared earnings.
