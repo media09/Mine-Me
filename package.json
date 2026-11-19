@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "node .next/standalone/server.js",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:gateway": "npm run test --workspace=@mine-me/pool-gateway"
   },
   "dependencies": {
     "@supabase/ssr": "0.12.7",
@@ -23,5 +24,8 @@
     "@types/react-dom": "19.3.0",
     "typescript": "5.9.3",
     "vitest": "4.0.17"
-  }
+  },
+  "workspaces": [
+    "services/pool-gateway"
+  ]
 }
