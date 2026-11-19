@@ -6,7 +6,7 @@ import { signOutAction } from "./actions";
 export default async function DashboardPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  if (!user) redirect("/mineme/login");
 
   const { data: profile } = await supabase
     .from("profiles")
