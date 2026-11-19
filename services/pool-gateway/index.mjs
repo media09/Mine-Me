@@ -9,6 +9,7 @@ import {
   normaliseProxyLine,
   verifySessionToken,
   validateShareMessage,
+  validateTelemetryMessage,
 } from "./lib/protocol.mjs";
 
 const env = process.env;
@@ -180,17 +181,8 @@ async function recordTelemetry(session, message) {
   if (session.closed || !session.proxyAuthenticated ||
       activeDevices.get(session.claims.deviceId) !== session) return;
 
-  const hashesPerSecond = message.hashesPerSecond;
-  const hashesComputed = message.hashesComputed;
-  const sampleSeconds = message.sampleSeconds;
-
-  if (
-    typeof hashesPerSecond !== "number" || !Number.isFinite(hashesPerSecond) ||
-    hashesPerSecond < 0 || hashesPerSecond > 1_000_000 ||
-    !Number.isSafeInteger(hashesComputed) || hashesComputed < 0 ||
-    typeof sampleSeconds !== "number" || !Number.isFinite(sampleSeconds) ||
-    sampleSeconds < 0.5 || sampleSeconds > 60
-  ) {
+  const telemetry = validateTelemetryMessage(message);
+  if (!telemetry) {
     log("invalid_device_telemetry", { deviceId: session.claims.deviceId });
     return;
   }
@@ -203,9 +195,9 @@ async function recordTelemetry(session, message) {
   const measuredAt = new Date().toISOString();
   const { error } = await supabase.from("device_telemetry").upsert({
     device_id: session.claims.deviceId,
-    reported_hashrate: hashesPerSecond,
-    hashes_computed: hashesComputed,
-    sample_seconds: sampleSeconds,
+    reported_hashrate: telemetry.hashesPerSecond,
+    hashes_computed: telemetry.hashesComputed,
+    sample_seconds: telemetry.sampleSeconds,
     measured_at: measuredAt,
     received_at: measuredAt,
   }, { onConflict: "device_id" });
