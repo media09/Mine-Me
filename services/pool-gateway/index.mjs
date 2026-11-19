@@ -176,6 +176,48 @@ async function markDeviceOffline(session) {
   }
 }
 
+async function recordTelemetry(session, message) {
+  if (session.closed || !session.proxyAuthenticated ||
+      activeDevices.get(session.claims.deviceId) !== session) return;
+
+  const hashesPerSecond = message.hashesPerSecond;
+  const hashesComputed = message.hashesComputed;
+  const sampleSeconds = message.sampleSeconds;
+
+  if (
+    typeof hashesPerSecond !== "number" || !Number.isFinite(hashesPerSecond) ||
+    hashesPerSecond < 0 || hashesPerSecond > 1_000_000 ||
+    !Number.isSafeInteger(hashesComputed) || hashesComputed < 0 ||
+    typeof sampleSeconds !== "number" || !Number.isFinite(sampleSeconds) ||
+    sampleSeconds < 0.5 || sampleSeconds > 60
+  ) {
+    log("invalid_device_telemetry", { deviceId: session.claims.deviceId });
+    return;
+  }
+
+  const now = Date.now();
+  // Keep telemetry writes bounded even if a compromised client ignores worker sampling.
+  if (now - session.lastTelemetryAt < 1000) return;
+  session.lastTelemetryAt = now;
+
+  const measuredAt = new Date().toISOString();
+  const { error } = await supabase.from("device_telemetry").upsert({
+    device_id: session.claims.deviceId,
+    reported_hashrate: hashesPerSecond,
+    hashes_computed: hashesComputed,
+    sample_seconds: sampleSeconds,
+    measured_at: measuredAt,
+    received_at: measuredAt,
+  }, { onConflict: "device_id" });
+
+  if (error) {
+    log("device_telemetry_write_failed", {
+      deviceId: session.claims.deviceId,
+      code: error.code || "ERR_TELEMETRY",
+    });
+  }
+}
+
 async function recordShare(session, pending, accepted, reason) {
   const poolShareRef = `hashvault:${session.claims.deviceId}:${pending.jobId}:${pending.nonce.toLowerCase()}`;
   const { error } = await supabase.from("mining_share_ledger").insert({
@@ -500,6 +542,11 @@ async function handleBrowserMessage(session, rawData) {
     return;
   }
 
+  if (message.type === "telemetry") {
+    await recordTelemetry(session, message);
+    return;
+  }
+
   if (!validateShareMessage(message, session.currentJobId)) {
     cleanupSession(session, "invalid or stale share submission");
     return;
@@ -606,6 +653,7 @@ wss.on("connection", (ws) => {
     pendingShares: new Map(),
     submittedNonces: new Set(),
     gatewaySessionId: null,
+    lastTelemetryAt: 0,
     lastTelemetryAt: 0,
   };
   sessions.add(session);
