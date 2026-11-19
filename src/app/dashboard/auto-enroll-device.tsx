@@ -66,11 +66,11 @@ export default function AutoEnrollDevice() {
 
         const { data: profile, error: profileError } = await supabase
           .from("profiles")
-          .select("consent_version, consented_at")
+          .select("consent_version, consented_at, account_status")
           .eq("id", user.id)
           .single();
 
-        if (profileError || !profile?.consented_at || profile.consent_version !== CONSENT_VERSION) {
+        if (profileError || profile?.account_status !== "active" || !profile?.consented_at || profile.consent_version !== CONSENT_VERSION) {
           throw new Error("Le consentement actuel est requis avant l’association de l’appareil.");
         }
 
