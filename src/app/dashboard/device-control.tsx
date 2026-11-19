@@ -388,7 +388,8 @@ export default function DeviceControl({
           <div className="intensity-scale"><span>Économie</span><span>Plus actif</span></div>
           <p className="device-mini-note">Réglage de l’activité d’un worker RandomX dans le navigateur (un thread). Plafond autorisé par la plateforme : {maxIntensityPercent}%. Ce pourcentage ne représente pas directement l’utilisation totale de tous les cœurs.</p>
           <div className="device-actions">
-            {deviceStatus === "enrolled" && miningState !== "running" && miningState !== "connecting" &&
+            {(deviceStatus === "enrolled" || deviceStatus === "running" || deviceStatus === "offline") &&
+              miningState !== "running" && miningState !== "connecting" &&
               <button className="mini-action" type="button" disabled={busy} onClick={() => setConnectionAttempt((value) => value + 1)}>Relancer la connexion</button>}
             <button className="save-intensity" type="button" onClick={saveIntensity} disabled={busy || intensity === savedIntensity}>{busy ? "Enregistrement…" : "Enregistrer l’intensité"}</button>
             {canPause && <button className="mini-action" type="button" disabled={busy} onClick={() => changeParticipation("paused")}>Mettre en pause</button>}
