@@ -105,7 +105,7 @@ export default function AutoEnrollDevice() {
 
           if (updateError) throw updateError;
         } else {
-          const { error: insertError } = await supabase
+          const { data: enrolledDevice, error: insertError } = await supabase
             .from("devices")
             .insert({
               user_id: user.id,
@@ -115,9 +115,20 @@ export default function AutoEnrollDevice() {
               platform_family: platform,
               hardware_threads: threads,
               last_seen_at: new Date().toISOString(),
-            });
+            })
+            .select("id")
+            .single();
 
           if (insertError && insertError.code !== "23505") throw insertError;
+
+          if (enrolledDevice?.id) {
+            const { error: eventError } = await supabase.from("device_events").insert({
+              device_id: enrolledDevice.id,
+              event_type: "enrolled",
+              details: { source: "browser_registration", browser, platform, hardware_threads: threads },
+            });
+            if (eventError) throw eventError;
+          }
           // A second tab can win the unique insert race. The next dashboard refresh
           // will find and update that existing installation rather than duplicating it.
         }
