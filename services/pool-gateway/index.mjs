@@ -138,6 +138,7 @@ async function markDeviceRunning(claims) {
 }
 
 async function markDeviceOffline(claims) {
+  if (!claims?.deviceId || !claims?.sub) return;
   try {
     await supabase.from("devices")
       .update({ status: "offline", last_seen_at: new Date().toISOString() })
@@ -367,7 +368,10 @@ async function authenticateBrowserSession(session, rawMessage) {
   if (activeDevices.has(claims.deviceId)) throw new Error("This device already has an active mining connection.");
   if (sessions.size >= config.maxWorkers) throw new Error("The mining service has reached its current worker limit.");
 
-  await readPlatformState(claims);
+  const state = await readPlatformState(claims);
+  if (state.device.status !== "enrolled") {
+    throw new Error("Device must be enrolled and not paused or stopped.");
+  }
   usedTokenIds.set(claims.jti, claims.exp);
   activeDevices.set(claims.deviceId, session);
   session.claims = claims;
