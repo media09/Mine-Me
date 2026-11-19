@@ -86,14 +86,14 @@ function readScalar(value) {
   return null;
 }
 
-async function readPlatformState(claims, { allowRunning = false } = {}) {
+async function readPlatformState(claims, { expectedSessionId = null } = {}) {
   const [profileResult, deviceResult, settingsResult] = await Promise.all([
     supabase.from("profiles")
       .select("id, role, account_status, consent_version, consented_at")
       .eq("id", claims.sub)
       .maybeSingle(),
     supabase.from("devices")
-      .select("id, user_id, worker_code, status, intensity_percent, last_seen_at")
+      .select("id, user_id, worker_code, status, intensity_percent, last_seen_at, active_session_id")
       .eq("id", claims.deviceId)
       .eq("user_id", claims.sub)
       .maybeSingle(),
@@ -118,6 +118,9 @@ async function readPlatformState(claims, { allowRunning = false } = {}) {
   if (!allowedDeviceStatuses.includes(device.status)) {
     throw new Error("Device is not enrolled or has already been paused/stopped.");
   }
+  if (expectedSessionId && device.active_session_id !== expectedSessionId) {
+    throw new Error("This browser connection no longer owns the device session.");
+  }
 
   const settings = new Map((settingsResult.data || []).map((row) => [row.key, readScalar(row.value)]));
   const miningEnabled = settings.get("mining_enabled") === true;
@@ -136,30 +139,37 @@ async function readPlatformState(claims, { allowRunning = false } = {}) {
   return { profile, device, maxIntensity };
 }
 
-async function markDeviceRunning(claims) {
+async function markDeviceRunning(session) {
+  const claims = session.claims;
   const { data, error } = await supabase
     .from("devices")
-    .update({ status: "running", last_seen_at: new Date().toISOString() })
+    .update({
+      status: "running",
+      active_session_id: session.gatewaySessionId,
+      last_seen_at: new Date().toISOString(),
+    })
     .eq("id", claims.deviceId)
     .eq("user_id", claims.sub)
     .in("status", ["enrolled", "running"])
-    .select("id, status, intensity_percent")
+    .select("id, status, intensity_percent, active_session_id")
     .maybeSingle();
 
-  if (error || !data || data.status !== "running") {
+  if (error || !data || data.status !== "running" || data.active_session_id !== session.gatewaySessionId) {
     throw new Error("The device could not enter the running state.");
   }
   return data;
 }
 
-async function markDeviceOffline(claims) {
-  if (!claims?.deviceId || !claims?.sub) return;
+async function markDeviceOffline(session) {
+  const claims = session?.claims;
+  if (!claims?.deviceId || !claims?.sub || !session.gatewaySessionId) return;
   try {
     await supabase.from("devices")
-      .update({ status: "offline", last_seen_at: new Date().toISOString() })
+      .update({ status: "offline", active_session_id: null, last_seen_at: new Date().toISOString() })
       .eq("id", claims.deviceId)
       .eq("user_id", claims.sub)
-      .eq("status", "running");
+      .eq("status", "running")
+      .eq("active_session_id", session.gatewaySessionId);
   } catch {
     // Preserve paused/stopped/blocked state. A cleanup failure is logged, not hidden.
     log("device_offline_cleanup_failed", { deviceId: claims.deviceId });
@@ -212,7 +222,7 @@ function cleanupSession(session, reason = "closed") {
   }
   if (session.ws.readyState === WebSocket.OPEN) safeClose(session.ws, 1000, reason);
   if (session.claims) {
-    void markDeviceOffline(session.claims).then(() => {
+    void markDeviceOffline(session).then(() => {
       log("worker_disconnected", { deviceId: session.claims.deviceId, reason });
     });
   } else {
@@ -223,12 +233,13 @@ function cleanupSession(session, reason = "closed") {
 async function revalidateSession(session) {
   if (session.closed) return;
   try {
-    const state = await readPlatformState(session.claims, { allowRunning: true });
+    const state = await readPlatformState(session.claims, { expectedSessionId: session.gatewaySessionId });
     if (state.device.status !== "running") throw new Error("Device is no longer in running state.");
     await supabase.from("devices")
       .update({ last_seen_at: new Date().toISOString() })
       .eq("id", session.claims.deviceId)
-      .eq("status", "running");
+      .eq("status", "running")
+      .eq("active_session_id", session.gatewaySessionId);
   } catch (error) {
     cleanupSession(session, "authorization changed");
     log("worker_session_revoked", {
@@ -255,7 +266,7 @@ function processProxyMessage(session, message) {
     session.proxyAuthenticated = true;
     session.proxyMinerId = message.result.id;
     const job = parseProxyJob(session, message.result.job);
-    void markDeviceRunning(session.claims).then(() => {
+    void markDeviceRunning(session).then(() => {
       if (session.closed) return;
       send(session.ws, {
         type: "ready",
@@ -438,6 +449,7 @@ async function authenticateBrowserSession(session, rawMessage) {
     usedTokenIds.set(claims.jti, claims.exp);
     activeDevices.set(claims.deviceId, session);
     session.claims = claims;
+    session.gatewaySessionId = randomUUID();
     session.authenticated = true;
     clearTimeout(session.authTimer);
     session.nextProxyRequestId = 100;
@@ -593,6 +605,8 @@ wss.on("connection", (ws) => {
     proxySocket: null,
     pendingShares: new Map(),
     submittedNonces: new Set(),
+    gatewaySessionId: null,
+    lastTelemetryAt: 0,
   };
   sessions.add(session);
   session.authTimer = setTimeout(() => {
