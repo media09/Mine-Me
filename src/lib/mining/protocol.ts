@@ -42,11 +42,17 @@ export function parseRandomXTarget(targetHex: string): bigint {
   throw new Error("Le pool a envoyé une cible RandomX non prise en charge.");
 }
 
+/**
+ * vltrig-proxy's NiceHash mode assigns the last nonce byte to the downstream miner.
+ * Preserve that fixed byte and increment only the lower 24-bit per-miner nonce.
+ */
 export function incrementRandomXNonce(blob: Uint8Array): void {
-  if (blob.length <= RANDOMX_NONCE_OFFSET + RANDOMX_NONCE_SIZE - 1) {
+  if (blob.length < RANDOMX_NONCE_OFFSET + RANDOMX_NONCE_SIZE) {
     throw new Error("Le blob du pool est trop court pour un nonce RandomX.");
   }
   const view = new DataView(blob.buffer, blob.byteOffset, blob.byteLength);
-  const next = (view.getUint32(RANDOMX_NONCE_OFFSET, true) + 1) >>> 0;
-  view.setUint32(RANDOMX_NONCE_OFFSET, next, true);
+  const current = view.getUint32(RANDOMX_NONCE_OFFSET, true);
+  const fixedByte = current & 0xff00_0000;
+  const nextCounter = ((current & 0x00ff_ffff) + 1) & 0x00ff_ffff;
+  view.setUint32(RANDOMX_NONCE_OFFSET, fixedByte | nextCounter, true);
 }
