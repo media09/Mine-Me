@@ -20,6 +20,9 @@ const config = {
   proxyHost: env.POOL_PROXY_HOST || "127.0.0.1",
   proxyPort: Number(env.POOL_PROXY_PORT || 3333),
   maxWorkers: Math.min(1000, Math.max(1, Number(env.MAX_ACTIVE_WORKERS || 1000))),
+  maxPendingAuthConnections: Math.min(200, Math.max(10, Number(env.MAX_PENDING_AUTH_CONNECTIONS || 100))),
+  maxConnectionAttemptsPerMinute: Math.min(300, Math.max(10, Number(env.MAX_CONNECTION_ATTEMPTS_PER_MINUTE || 60))),
+  trustProxyHeaders: env.TRUST_PROXY_HEADERS === "true",
   authTimeoutMs: 7000,
   revalidateMs: 5000,
   keepAliveMs: 20000,
@@ -41,6 +44,10 @@ if (!config.allowedOrigins.length) {
 if (config.proxyHost !== "127.0.0.1" && config.proxyHost !== "::1") {
   throw new Error("POOL_PROXY_HOST must be a loopback address; the Stratum proxy must not be exposed.");
 }
+if (!Number.isInteger(config.maxWorkers) || !Number.isInteger(config.maxPendingAuthConnections) ||
+    !Number.isInteger(config.maxConnectionAttemptsPerMinute)) {
+  throw new Error("Worker and connection rate limits must be valid integers.");
+}
 if (!Number.isInteger(config.port) || config.port < 1 || config.port > 65535) {
   throw new Error("GATEWAY_PORT is invalid.");
 }
@@ -54,6 +61,7 @@ const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
 
 const activeDevices = new Map();
 const usedTokenIds = new Map();
+const connectionAttempts = new Map();
 const sessions = new Set();
 
 function log(event, fields = {}) {
@@ -349,6 +357,30 @@ function connectToLocalProxy(session) {
   });
 }
 
+function resolveClientIp(request) {
+  if (config.trustProxyHeaders) {
+    const forwardedIp = request.headers["x-real-ip"];
+    if (typeof forwardedIp === "string" && forwardedIp.length <= 64) return forwardedIp;
+  }
+  return request.socket.remoteAddress || "unknown";
+}
+
+function allowConnectionAttempt(ip) {
+  const now = Date.now();
+  let bucket = connectionAttempts.get(ip);
+  if (!bucket || now - bucket.windowStart >= 60_000) {
+    bucket = { windowStart: now, count: 0 };
+    connectionAttempts.set(ip, bucket);
+  }
+  bucket.count += 1;
+  if (connectionAttempts.size > 10_000) {
+    for (const [key, value] of connectionAttempts) {
+      if (now - value.windowStart >= 60_000) connectionAttempts.delete(key);
+    }
+  }
+  return bucket.count <= config.maxConnectionAttemptsPerMinute;
+}
+
 function consumeMessageRate(session) {
   const now = Date.now();
   if (now - session.rateWindowStart >= 1000) {
@@ -493,15 +525,29 @@ const wss = new WebSocketServer({
 server.on("upgrade", (request, socket, head) => {
   const origin = request.headers.origin;
   const pathname = new URL(request.url || "/", "http://localhost").pathname;
+  const clientIp = resolveClientIp(request);
+  let pendingAuthCount = 0;
+  for (const session of sessions) {
+    if (!session.authenticated) pendingAuthCount += 1;
+  }
+
   if (pathname !== config.wsPath || !origin || !config.allowedOrigins.includes(origin)) {
-    socket.write("HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n");
+    socket.write("HTTP/1.1 403 Forbidden\\r\\nConnection: close\\r\\n\\r\\n");
     socket.destroy();
+    return;
+  }
+  if (
+    pendingAuthCount >= config.maxPendingAuthConnections ||
+    !allowConnectionAttempt(clientIp)
+  ) {
+    socket.write("HTTP/1.1 429 Too Many Requests\\r\\nRetry-After: 60\\r\\nConnection: close\\r\\n\\r\\n");
+    socket.destroy();
+    log("websocket_connection_limited", { clientIp, pendingAuthCount });
     return;
   }
 
   wss.handleUpgrade(request, socket, head, (ws) => wss.emit("connection", ws, request));
 });
-
 wss.on("connection", (ws) => {
   const session = {
     ws,
@@ -535,6 +581,8 @@ server.listen(config.port, config.bindHost, () => {
     allowedOrigins: config.allowedOrigins,
     proxyTarget: `${config.proxyHost}:${config.proxyPort}`,
     maxWorkers: config.maxWorkers,
+    maxPendingAuthConnections: config.maxPendingAuthConnections,
+    maxConnectionAttemptsPerMinute: config.maxConnectionAttemptsPerMinute,
   });
 });
 
