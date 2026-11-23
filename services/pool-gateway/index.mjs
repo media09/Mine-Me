@@ -25,6 +25,7 @@ const config = {
   maxConnectionAttemptsPerMinute: Math.min(300, Math.max(10, Number(env.MAX_CONNECTION_ATTEMPTS_PER_MINUTE || 60))),
   trustProxyHeaders: env.TRUST_PROXY_HEADERS === "true",
   authTimeoutMs: 7000,
+  proxyAuthTimeoutMs: 10000,
   revalidateMs: 5000,
   keepAliveMs: 20000,
   maxMessageBytes: 16 * 1024,
@@ -179,15 +180,18 @@ async function markDeviceOffline(session) {
   const claims = session?.claims;
   if (!claims?.deviceId || !claims?.sub || !session.gatewaySessionId) return;
   try {
-    await supabase.from("devices")
+    const { error } = await supabase.from("devices")
       .update({ status: "offline", active_session_id: null, last_seen_at: new Date().toISOString() })
       .eq("id", claims.deviceId)
       .eq("user_id", claims.sub)
       .eq("status", "running")
       .eq("active_session_id", session.gatewaySessionId);
+    if (error) {
+      log("device_offline_cleanup_failed", { deviceId: claims.deviceId, code: error.code || "ERR_DEVICE_CLEANUP" });
+    }
   } catch {
     // Preserve paused/stopped/blocked state. A cleanup failure is logged, not hidden.
-    log("device_offline_cleanup_failed", { deviceId: claims.deviceId });
+    log("device_offline_cleanup_failed", { deviceId: claims.deviceId, code: "ERR_DEVICE_CLEANUP" });
   }
 }
 
@@ -267,6 +271,7 @@ function cleanupSession(session, reason = "closed") {
   if (session.authTimer) clearTimeout(session.authTimer);
   if (session.keepAliveTimer) clearInterval(session.keepAliveTimer);
   if (session.revalidateTimer) clearInterval(session.revalidateTimer);
+  if (session.proxyAuthTimer) clearTimeout(session.proxyAuthTimer);
   if (session.proxySocket && !session.proxySocket.destroyed) {
     try { session.proxySocket.end(); } catch { session.proxySocket.destroy(); }
   }
@@ -313,6 +318,8 @@ function processProxyMessage(session, message) {
       throw new Error("The pool proxy returned an invalid miner session identifier.");
     }
 
+    if (session.proxyAuthTimer) clearTimeout(session.proxyAuthTimer);
+    session.proxyAuthTimer = null;
     session.proxyAuthenticated = true;
     session.proxyMinerId = message.result.id;
     const job = parseProxyJob(session, message.result.job);
@@ -484,7 +491,7 @@ async function authenticateBrowserSession(session, rawMessage) {
     if (activeDevices.has(claims.deviceId)) {
       throw new Error("This device already has an active mining connection.");
     }
-    if (sessions.size > config.maxWorkers) {
+    if (sessions.size >= config.maxWorkers) {
       throw new Error("The mining service has reached its current worker limit.");
     }
 
@@ -512,6 +519,9 @@ async function authenticateBrowserSession(session, rawMessage) {
     session.submittedNonces = new Set();
     session.proxyAuthenticated = false;
 
+    session.proxyAuthTimer = setTimeout(() => {
+      if (!session.proxyAuthenticated) cleanupSession(session, "pool proxy authentication timeout");
+    }, config.proxyAuthTimeoutMs);
     await connectToLocalProxy(session);
   } finally {
     session.authenticating = false;
@@ -658,6 +668,7 @@ wss.on("connection", (ws) => {
     rateWindowStart: Date.now(),
     messageCount: 0,
     authTimer: null,
+    proxyAuthTimer: null,
     keepAliveTimer: null,
     revalidateTimer: null,
     proxySocket: null,
