@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Keep the existing application URL prefix while moving the runtime to Workers.
+  // MINE-ME is served under /mineme on the selected application hostname.
   basePath: "/mineme",
   poweredByHeader: false,
   reactStrictMode: true,
