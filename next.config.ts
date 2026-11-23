@@ -1,9 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // The production site is hosted at https://app.sharedboost.com/mineme.
+  // Keep the existing application URL prefix while moving the runtime to Workers.
   basePath: "/mineme",
-  output: "standalone",
   poweredByHeader: false,
   reactStrictMode: true,
 };
