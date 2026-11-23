@@ -5,12 +5,17 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "build:cloudflare": "opennextjs-cloudflare build",
+    "preview": "npm run build:cloudflare && wrangler dev",
+    "deploy": "npm run build:cloudflare && wrangler deploy",
+    "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts",
     "start": "node .next/standalone/server.js",
     "typecheck": "tsc --noEmit",
     "test": "vitest run src/lib/mining",
     "test:gateway": "npm run test --workspace=@mine-me/pool-gateway"
   },
   "dependencies": {
+    "@opennextjs/cloudflare": "1.20.18",
     "@supabase/ssr": "0.12.7",
     "@supabase/supabase-js": "2.119.2",
     "next": "16.4.6",
@@ -23,7 +28,8 @@
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
     "typescript": "5.9.3",
-    "vitest": "4.0.17"
+    "vitest": "4.0.17",
+    "wrangler": "4.166.0"
   },
   "workspaces": [
     "services/pool-gateway"
