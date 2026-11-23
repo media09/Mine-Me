@@ -36,6 +36,7 @@ declare
   v_mining_enabled boolean := false;
   v_emergency_pause boolean := true;
   v_account_status text;
+  v_has_consent boolean := false;
   v_device_status text;
   v_device_worker_code text;
   v_device_intensity integer;
@@ -106,11 +107,11 @@ begin
   end if;
 
   select p.account_status, p.consent_version, (p.consented_at is not null)
-    into v_account_status, v_consent_version, v_rows
+    into v_account_status, v_consent_version, v_has_consent
   from public.profiles p
   where p.id = v_user_id;
   if not found or v_account_status <> 'active' or
-     v_consent_version <> (v_payload->>'consentVersion') or v_rows <> 1 then
+     v_consent_version <> (v_payload->>'consentVersion') or not v_has_consent then
     return jsonb_build_object('authorized', false, 'reason', 'member_inactive_or_consent_missing');
   end if;
 
