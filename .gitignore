@@ -9,3 +9,8 @@ coverage/
 .DS_Store
 *.log
 .vercel/
+
+.open-next/
+.wrangler/
+.dev.vars
+cloudflare-env.d.ts
