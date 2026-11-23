@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - feature/mine-me-foundation
+      - deploy/cloudflare-workers
   pull_request:
     branches:
       - main
@@ -34,14 +35,14 @@ jobs:
         run: npm test
       - name: Pool gateway token and protocol tests
         run: npm run test:gateway
-      - name: Production build
-        run: npm run build
+      - name: Cloudflare Workers production build
+        run: npx opennextjs-cloudflare build
         env:
           NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-placeholder-public-key
           NEXT_PUBLIC_APP_URL: https://example.com/mineme
       - name: Commit generated lockfile
-        if: github.event_name == 'push' && github.ref == 'refs/heads/feature/mine-me-foundation'
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/feature/mine-me-foundation' || github.ref == 'refs/heads/deploy/cloudflare-workers')
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
