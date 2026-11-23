@@ -4,10 +4,12 @@ This service is separate from the Next.js website and must run continuously on a
 
 ## Required services
 
-- Next.js web app at `https://app.sharedboost.com/mineme`.
-- Persistent Node.js 22+ pool gateway (this package).
+- MINE-ME web application on its approved public HTTPS origin.
+- Persistent Node.js 22+ pool gateway (this package), hosted on a provider whose acceptable-use policy explicitly permits this mining-pool proxy workload.
 - HashVault `vltrig-proxy` process, listening only on `127.0.0.1:3333`.
 - TLS reverse proxy for the gateway (WSS).
+
+Do not run the gateway or Stratum proxy on Cloudflare Workers/Tunnels or Supabase Edge Functions. Their compute/service policies do not permit this cryptocurrency-mining workload. The gateway requires a separate, continuously running host with outbound TCP/TLS and WebSocket support.
 
 Supabase Edge Functions are not the persistent WebSocket-to-Stratum service.
 
@@ -17,7 +19,7 @@ Copy `.env.example` to a protected server-only environment file. Set:
 - `SUPABASE_URL` to the MINE-ME project URL.
 - `SUPABASE_SERVICE_ROLE_KEY` to a server-only Supabase secret key. Never expose it to the browser or commit it.
 - `MINING_GATEWAY_TOKEN_SECRET` to a high-entropy secret of at least 32 bytes. Use the exact same value in the Next.js server environment.
-- `ALLOWED_WEB_ORIGINS=https://app.sharedboost.com`.
+- `ALLOWED_WEB_ORIGINS=https://YOUR-MINE-ME-APP-DOMAIN` (exact origin only; no path or trailing slash).
 - `POOL_PROXY_HOST=127.0.0.1` and `POOL_PROXY_PORT=3333`.
 - Set `TRUST_PROXY_HEADERS=true` only when the gateway is reachable exclusively through your own reverse proxy, and configure that proxy to overwrite `X-Real-IP`. Keep `MAX_ACTIVE_WORKERS`, `MAX_PENDING_AUTH_CONNECTIONS` and `MAX_CONNECTION_ATTEMPTS_PER_MINUTE` within the capacity of the gateway host.
 
