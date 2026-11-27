@@ -98,7 +98,7 @@ class MiningGatewayService {
   MiningGatewayService(this._client);
   final SupabaseClient _client;
 
-  Future<MiningGatewayConnection> connect({required String deviceId}) async {
+  Future<MiningGatewayConnection> connect({required String deviceId, required String traceId}) async {
     final accessToken = _client.auth.currentSession?.accessToken;
     if (accessToken == null || accessToken.isEmpty) {
       throw const MiningGatewayException(
@@ -117,7 +117,7 @@ class MiningGatewayService {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
       },
-      body: jsonEncode({'deviceId': deviceId}),
+      body: jsonEncode({'deviceId': deviceId, 'traceId': traceId}),
     );
 
     Map<String, dynamic>? body;
