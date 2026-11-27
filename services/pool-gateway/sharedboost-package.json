@@ -1,0 +1,10 @@
+{
+  "name": "mine-me-sharedboost-gateway",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Passenger adapter and MINE-ME pool gateway runtime for SharedBoost",
+  "dependencies": {
+    "@supabase/supabase-js": "2.119.2",
+    "ws": "8.23.0"
+  }
+}
