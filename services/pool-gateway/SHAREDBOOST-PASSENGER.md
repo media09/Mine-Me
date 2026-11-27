@@ -33,11 +33,11 @@ Use cPanel Node.js Selector's **Run NPM Install** after placing package.json.
 - `SUPABASE_URL=https://mqyqpflamkplhlphrngn.supabase.co`
 - `SUPABASE_SERVICE_ROLE_KEY` (server-only; never put in a browser or GitHub file)
 - `MINING_GATEWAY_TOKEN_SECRET` (at least 32 random bytes; keep it private)
-- `ALLOWED_WEB_ORIGINS=https://app.sharedboost.com`
+- `ALLOWED_WEB_ORIGINS=https://mine-me.671btweb.workers.dev`
 - `CENTRAL_MONERO_WALLET_ADDRESS` (platform public receiving address only)
 - `VLTRIG_PROXY_PATH=bin/vltrig-proxy`
 
-The adapter sets `GATEWAY_BIND_HOST=127.0.0.1`, `GATEWAY_WS_PATH=/ws`,
+The browser application origin is `https://mine-me.671btweb.workers.dev` (origin only; do not include `/minime`). SharedBoost is only the Gateway host, not the browser origin. The adapter sets `GATEWAY_BIND_HOST=127.0.0.1`, `GATEWAY_WS_PATH=/ws`,
 `POOL_PROXY_HOST=127.0.0.1`, `POOL_PROXY_PORT=3333`, and a private Gateway
 port automatically. Do not expose port 3333 or the Gateway's private port.
 
