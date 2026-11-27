@@ -1,5 +1,6 @@
 import 'dart:ffi';
 import 'dart:io';
+import 'dart:typed_data';
 import 'dart:convert';
 
 import 'package:ffi/ffi.dart';
@@ -24,13 +25,12 @@ class RandomXEngineException implements Exception {
 /// Desktop uses fast mode (about 2.1 GiB dataset); Android defaults to light
 /// mode to avoid unexpectedly reserving most of a phone's RAM.
 class RandomXEngine {
-  RandomXEngine._(this._library)
-      : _init = _library.lookupFunction<_InitNative, _InitDart>('mm_randomx_init'),
-        _hash = _library.lookupFunction<_HashNative, _HashDart>('mm_randomx_hash'),
-        _mode = _library.lookupFunction<_ModeNative, _ModeDart>('mm_randomx_mode'),
-        _release = _library.lookupFunction<_ReleaseNative, _ReleaseDart>('mm_randomx_release');
+  RandomXEngine._(DynamicLibrary library)
+      : _init = library.lookupFunction<_InitNative, _InitDart>('mm_randomx_init'),
+        _hash = library.lookupFunction<_HashNative, _HashDart>('mm_randomx_hash'),
+        _mode = library.lookupFunction<_ModeNative, _ModeDart>('mm_randomx_mode'),
+        _release = library.lookupFunction<_ReleaseNative, _ReleaseDart>('mm_randomx_release');
 
-  final DynamicLibrary _library;
   final _InitDart _init;
   final _HashDart _hash;
   final _ModeDart _mode;
