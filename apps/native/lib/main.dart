@@ -32,7 +32,7 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Supabase.initialize(
     url: MineMeConfig.supabaseUrl,
-    anonKey: MineMeConfig.supabasePublishableKey,
+    publishableKey: MineMeConfig.supabasePublishableKey,
     authOptions: FlutterAuthClientOptions(
       authFlowType: AuthFlowType.pkce,
       localStorage: MineMeSecureAuthStorage(),
