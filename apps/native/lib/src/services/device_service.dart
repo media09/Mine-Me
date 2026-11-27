@@ -1,4 +1,7 @@
+import 'dart:io';
+
 import 'package:device_info_plus/device_info_plus.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 
@@ -9,19 +12,19 @@ class DeviceService {
   final SupabaseClient _client;
   static const _uuid = Uuid();
   static const _installationKey = 'mine-me.native-installation-id';
+  static const _secureStorage = FlutterSecureStorage();
 
   Future<String> _installationId() async {
-    // Device identity is a random installation identifier, not a hardware ID.
-    final storage = _client.auth;
-    final metadata = await _client.from('profiles').select('id').eq(
-      'id', _client.auth.currentUser!.id,
-    ).maybeSingle();
-    if (metadata == null) throw Exception('Profil MINE-ME introuvable.');
-    // A stable per-install identifier is stored in secure local preferences by
-    // the platform adapter in later releases; this first release uses a UUID.
-    // The value is retained for this service lifetime to prevent duplicate rows
-    // during retries in the same app session.
-    return _uuid.v4();
+    final stored = await _secureStorage.read(key: _installationKey);
+    if (stored != null && RegExp(
+      r'^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$',
+      caseSensitive: false,
+    ).hasMatch(stored)) {
+      return stored;
+    }
+    final generated = _uuid.v4();
+    await _secureStorage.write(key: _installationKey, value: generated);
+    return generated;
   }
 
   Future<void> enroll() async {
@@ -48,19 +51,19 @@ class DeviceService {
     final info = DeviceInfoPlugin();
     String platform;
     String label;
-    if (await _isAndroid()) {
+    if (Platform.isAndroid) {
       final data = await info.androidInfo;
       platform = 'Android';
       label = '${data.manufacturer} ${data.model}'.trim();
-    } else if (await _isWindows()) {
+    } else if (Platform.isWindows) {
       final data = await info.windowsInfo;
       platform = 'Windows';
       label = data.productName;
-    } else if (await _isMacOS()) {
+    } else if (Platform.isMacOS) {
       final data = await info.macOsInfo;
       platform = 'macOS';
       label = data.model;
-    } else if (await _isLinux()) {
+    } else if (Platform.isLinux) {
       final data = await info.linuxInfo;
       platform = 'Linux';
       label = data.prettyName;
@@ -80,12 +83,4 @@ class DeviceService {
     });
   }
 
-  Future<bool> _isAndroid() async => _platform() == 'android';
-  Future<bool> _isWindows() async => _platform() == 'windows';
-  Future<bool> _isMacOS() async => _platform() == 'macos';
-  Future<bool> _isLinux() async => _platform() == 'linux';
-  String _platform() {
-    // DeviceInfoPlugin platform-specific calls are guarded by these checks.
-    return const String.fromEnvironment('MINE_ME_PLATFORM');
-  }
 }
