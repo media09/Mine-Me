@@ -46,6 +46,24 @@ class MiningGatewayConnection {
     }));
   }
 
+  void reportTelemetry({required double hashesPerSecond, required int hashesComputed, required double sampleSeconds}) {
+    if (_closed) return;
+    _channel.sink.add(jsonEncode({
+      'type': 'telemetry',
+      'hashesPerSecond': hashesPerSecond,
+      'hashesComputed': hashesComputed,
+      'sampleSeconds': sampleSeconds,
+    }));
+  }
+
+  void pause() {
+    if (!_closed) _channel.sink.add(jsonEncode({'type': 'pause'}));
+  }
+
+  void stop() {
+    if (!_closed) _channel.sink.add(jsonEncode({'type': 'stop'}));
+  }
+
   Future<void> close() async {
     if (_closed) return;
     _closed = true;
