@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../services/device_service.dart';
+import '../services/native_mining_controller.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -11,6 +12,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final _client = Supabase.instance.client;
+  late final NativeMiningController _mining;
   bool _busy = true;
   String? _error;
   Map<String, dynamic>? _profile;
@@ -21,7 +23,27 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
+    _mining = NativeMiningController(_client)..addListener(_onMiningChanged);
     _load();
+  }
+
+  void _onMiningChanged() {
+    if (!mounted) return;
+    setState(() {
+      if (_mining.errorMessage != null) _error = _mining.errorMessage;
+    });
+  }
+
+  @override
+  void dispose() {
+    _mining.removeListener(_onMiningChanged);
+    _mining.dispose();
+    super.dispose();
+  }
+
+  Future<void> _startMining(Map<String, dynamic> device) async {
+    await _mining.start(device['id'] as String,
+      intensityPercent: (device['intensity_percent'] as num?)?.toInt() ?? 20);
   }
 
   Future<void> _load() async {
@@ -179,24 +201,88 @@ class _HomeScreenState extends State<HomeScreen> {
             style: const TextStyle(color: Colors.white70))),
         ]),
         const SizedBox(height: 12),
-        const Text('Minage désactivé pendant la préparation de l’application.',
+        const Text('Le démarrage nécessite l’autorisation du serveur MINE-ME et le respect des limites de sécurité.',
           style: TextStyle(color: Colors.white54, fontSize: 12)),
       ]),
     ));
   }
 
-  Widget _deviceCard(Map<String, dynamic> device) => Card(
-    margin: const EdgeInsets.only(bottom: 10),
-    child: ListTile(
-      leading: const CircleAvatar(backgroundColor: Color(0xFF263629),
-        child: Icon(Icons.devices, color: Color(0xFFADFF65))),
-      title: Text((device['label'] as String?) ?? device['worker_code'] as String),
-      subtitle: Text('${device['worker_code']} · ${device['platform_family'] ?? 'Appareil'}'),
-      trailing: Text((device['status'] as String?) ?? '—',
-        style: const TextStyle(color: Colors.white70, fontSize: 12)),
-    ),
-  );
-
+  Widget _deviceCard(Map<String, dynamic> device) {
+    final deviceId = device['id'] as String;
+    final active = _mining.activeDeviceId == deviceId;
+    final running = active && _mining.state == NativeMiningState.running;
+    final busy = active && (_mining.state == NativeMiningState.authorising ||
+        _mining.state == NativeMiningState.connecting ||
+        _mining.state == NativeMiningState.initialising ||
+        _mining.state == NativeMiningState.stopping);
+    final blocked = device['status'] == 'blocked';
+    return Card(
+      margin: const EdgeInsets.only(bottom: 10),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        child: Column(children: [
+          ListTile(
+            leading: const CircleAvatar(backgroundColor: Color(0xFF263629),
+              child: Icon(Icons.devices, color: Color(0xFFADFF65))),
+            title: Text((device['label'] as String?) ?? device['worker_code'] as String),
+            subtitle: Text("${device['worker_code']} · ${device['platform_family'] ?? 'Appareil'}"),
+            trailing: Text((device['status'] as String?) ?? '—',
+              style: const TextStyle(color: Colors.white70, fontSize: 12)),
+          ),
+          if (active && running) Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(children: [
+              const Icon(Icons.speed, size: 16, color: Color(0xFFADFF65)),
+              const SizedBox(width: 7),
+              Text("${_mining.hashesPerSecond.toStringAsFixed(1)} H/s",
+                style: const TextStyle(fontWeight: FontWeight.w700)),
+              const Spacer(),
+              Text("Shares : ${_mining.acceptedShares} acceptées · ${_mining.rejectedShares} refusées",
+                style: const TextStyle(color: Colors.white60, fontSize: 11)),
+            ]),
+          ),
+          if (active && _mining.randomXMode != null) Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Text(
+              _mining.randomXMode == 'fast' ? 'RandomX rapide · dataset complet' : 'RandomX léger · mémoire réduite',
+              style: const TextStyle(color: Colors.white54, fontSize: 11),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
+            child: Row(children: [
+              if (running) ...[
+                Expanded(child: OutlinedButton.icon(
+                  onPressed: _mining.pause,
+                  icon: const Icon(Icons.pause),
+                  label: const Text('Pause'),
+                )),
+                const SizedBox(width: 10),
+                Expanded(child: FilledButton.tonalIcon(
+                  onPressed: _mining.stop,
+                  icon: const Icon(Icons.stop),
+                  label: const Text('Arrêter'),
+                )),
+              ] else ...[
+                Expanded(child: FilledButton.icon(
+                  onPressed: blocked || busy ? null : () => _startMining(device),
+                  icon: busy ? const SizedBox(width: 16, height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.play_arrow),
+                  label: Text(busy ? 'Préparation…' : 'Démarrer le minage'),
+                )),
+              ],
+            ]),
+          ),
+          if (active && _mining.errorMessage != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+              child: Text(_mining.errorMessage!,
+                style: const TextStyle(color: Color(0xFFFF8A80), fontSize: 12)),
+            ),
+        ]),
+      ),
+    );
+  }
   Widget _referralCard() => Card(child: Padding(
     padding: const EdgeInsets.all(18),
     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
