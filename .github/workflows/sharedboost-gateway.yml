@@ -1,0 +1,58 @@
+name: SharedBoost Passenger Gateway validation
+
+on:
+  pull_request:
+    branches:
+      - feature/mine-me-installable-app
+    paths:
+      - "services/pool-gateway/**"
+      - "services/pool-proxy/**"
+      - ".github/workflows/sharedboost-gateway.yml"
+  push:
+    branches:
+      - deploy/sharedboost-passenger-gateway
+    paths:
+      - "services/pool-gateway/**"
+      - "services/pool-proxy/**"
+      - ".github/workflows/sharedboost-gateway.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci --workspace=@mine-me/pool-gateway --include-workspace-root=false
+      - name: Check Passenger adapter syntax
+        run: node --check services/pool-gateway/passenger-app.cjs
+      - name: Run Gateway protocol tests
+        run: npm run test:gateway
+      - name: Assemble SharedBoost deployment bundle
+        run: |
+          mkdir -p dist/sharedboost/services/pool-gateway/lib
+          mkdir -p dist/sharedboost/services/pool-proxy
+          mkdir -p dist/sharedboost/bin
+          cp services/pool-gateway/passenger-app.cjs dist/sharedboost/app.js
+          cp services/pool-gateway/sharedboost-package.json dist/sharedboost/package.json
+          cp services/pool-gateway/index.mjs dist/sharedboost/services/pool-gateway/index.mjs
+          cp services/pool-gateway/lib/*.mjs dist/sharedboost/services/pool-gateway/lib/
+          cp services/pool-proxy/config.example.json dist/sharedboost/services/pool-proxy/config.example.json
+          cp services/pool-gateway/SHAREDBOOST-PASSENGER.md dist/sharedboost/README.md
+          printf '%s\\n' 'Upload the official Linux x64 vltrig-proxy binary here as bin/vltrig-proxy.' > dist/sharedboost/bin/UPLOAD-BINARY-HERE.txt
+          cd dist && zip -qr sharedboost-deployment.zip sharedboost
+      - name: Upload SharedBoost deployment bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: mine-me-sharedboost-deployment
+          path: dist/sharedboost-deployment.zip
+          if-no-files-found: error
+          retention-days: 14
