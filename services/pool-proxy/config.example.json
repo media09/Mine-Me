@@ -44,6 +44,23 @@
       "socks5": null,
       "self-select": null,
       "submit-to-origin": false
+    },
+    {
+      "algo": "rx/0",
+      "coin": "monero",
+      "url": "pool.hashvault.sh:443",
+      "user": "REPLACE_WITH_PLATFORM_MONERO_WALLET_ADDRESS",
+      "pass": "x",
+      "rig-id": "mine-me-central",
+      "keepalive": true,
+      "enabled": true,
+      "tls": true,
+      "sni": true,
+      "tls-fingerprint": null,
+      "daemon": false,
+      "socks5": null,
+      "self-select": null,
+      "submit-to-origin": false
     }
   ],
   "retries": 2,
