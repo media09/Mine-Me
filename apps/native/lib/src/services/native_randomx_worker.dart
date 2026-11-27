@@ -5,12 +5,21 @@ import 'dart:typed_data';
 import 'randomx_engine.dart';
 
 class NativeRandomXWorker {
-  NativeRandomXWorker._(this._isolate, this._commands, this._events, this._receive);
+  NativeRandomXWorker._(
+    this._isolate,
+    this._commands,
+    this._events,
+    this._receive,
+    this._receiveSubscription,
+    this._eventsController,
+  );
 
   final Isolate _isolate;
   final SendPort _commands;
   final Stream<Map<String, dynamic>> _events;
   final ReceivePort _receive;
+  final StreamSubscription<dynamic> _receiveSubscription;
+  final StreamController<Map<String, dynamic>> _eventsController;
   bool _closed = false;
   Stream<Map<String, dynamic>> get events => _events;
 
@@ -19,27 +28,51 @@ class NativeRandomXWorker {
     required int intensityPercent,
   }) async {
     final receive = ReceivePort();
-    final isolate = await Isolate.spawn(
-      _nativeRandomXEntry,
-      <String, Object>{
-        'events': receive.sendPort,
-        'job': job,
-        'intensityPercent': intensityPercent.clamp(1, 80),
-      },
-      errorsAreFatal: false,
-      debugName: 'MINE-ME RandomX',
-    );
+    final eventsController = StreamController<Map<String, dynamic>>();
+    final commandPort = Completer<SendPort>();
 
-    final first = await receive.first.timeout(const Duration(seconds: 90));
-    if (first is! SendPort) {
-      isolate.kill(priority: Isolate.immediate);
+    // Keep one ReceivePort subscription for its entire lifetime. A ReceivePort is
+    // single-subscription; consuming its first event with receive.first and then
+    // listening again can throw and silently prevent the native worker from
+    // receiving its job/hash events.
+    final receiveSubscription = receive.listen((value) {
+      if (value is SendPort) {
+        if (!commandPort.isCompleted) commandPort.complete(value);
+      } else if (value is Map) {
+        // A single-subscription StreamController buffers events until the caller
+        // attaches, so the worker's early "ready" event cannot be lost.
+        eventsController.add(Map<String, dynamic>.from(value));
+      }
+    });
+
+    late final Isolate isolate;
+    try {
+      isolate = await Isolate.spawn(
+        _nativeRandomXEntry,
+        <String, Object>{
+          'events': receive.sendPort,
+          'job': job,
+          'intensityPercent': intensityPercent.clamp(1, 80),
+        },
+        errorsAreFatal: false,
+        debugName: 'MINE-ME RandomX',
+      );
+
+      final commands = await commandPort.future.timeout(const Duration(seconds: 90));
+      return NativeRandomXWorker._(
+        isolate,
+        commands,
+        eventsController.stream,
+        receive,
+        receiveSubscription,
+        eventsController,
+      );
+    } catch (_) {
+      receiveSubscription.cancel();
       receive.close();
+      await eventsController.close();
       throw const RandomXEngineException('Le moteur RandomX natif n’a pas pu démarrer.');
     }
-    final eventStream = receive.cast<dynamic>()
-        .where((value) => value is Map)
-        .map((value) => Map<String, dynamic>.from(value as Map));
-    return NativeRandomXWorker._(isolate, first, eventStream, receive);
   }
 
   void setJob(Map<String, dynamic> job) => _commands.send({'type': 'job', 'job': job});
@@ -52,7 +85,9 @@ class NativeRandomXWorker {
     _commands.send({'type': 'stop'});
     await Future<void>.delayed(const Duration(milliseconds: 150));
     _isolate.kill(priority: Isolate.immediate);
+    await _receiveSubscription.cancel();
     _receive.close();
+    await _eventsController.close();
   }
 }
 
