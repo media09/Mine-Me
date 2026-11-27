@@ -43,3 +43,10 @@ See `services/pool-gateway/DEPLOYMENT.md` for the service topology and pre-activ
 - Pool host/port and wallet destination are server-side only. No client-selected upstream, open proxy, or exposed secrets.
 - Never expose Supabase service-role credentials, gateway signing secrets, pool credentials, or wallet private keys in browser code.
 - Do not fabricate hashrate, shares, earnings, or payouts.
+
+
+## Native installable application
+
+A Flutter application for Android and Windows/Linux/macOS is being developed in `apps/native`. The native shell currently supports member sign-in, profile and referral-code display, and secure per-install device enrollment. RandomX execution is intentionally not available in this milestone; the app cannot start mining. Native mining will remain gated until the platform engine, foreground/background lifecycle, authenticated gateway protocol, and verified-share accounting are implemented and tested.
+
+The `MINE-ME native installable builds` GitHub Actions workflow builds platform release artifacts on their matching hosted runners. These artifacts are development builds, not a production mining release.
