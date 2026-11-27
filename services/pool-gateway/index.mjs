@@ -20,7 +20,7 @@ const config = {
   allowedOrigins: (env.ALLOWED_WEB_ORIGINS || "").split(",").map((v) => v.trim()).filter(Boolean),
   proxyHost: env.POOL_PROXY_HOST || "127.0.0.1",
   proxyPort: Number(env.POOL_PROXY_PORT || 3333),
-  maxWorkers: Math.min(1000, Math.max(1, Number(env.MAX_ACTIVE_WORKERS || 1000))),
+  maxWorkers: Math.min(200, Math.max(1, Number(env.MAX_ACTIVE_WORKERS || 200))),
   maxPendingAuthConnections: Math.min(200, Math.max(10, Number(env.MAX_PENDING_AUTH_CONNECTIONS || 100))),
   maxConnectionAttemptsPerMinute: Math.min(300, Math.max(10, Number(env.MAX_CONNECTION_ATTEMPTS_PER_MINUTE || 60))),
   trustProxyHeaders: env.TRUST_PROXY_HEADERS === "true",
