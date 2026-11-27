@@ -35,8 +35,8 @@ See `services/pool-gateway/DEPLOYMENT.md` for the service topology and pre-activ
 - Signup requires a one-time owner bootstrap token for the first administrator, then a valid referral code.
 - Signup requires explicit, versioned consent to device compute and the centralized proceeds model.
 - Participants control intensity, pause and stop; the platform can enforce a safety ceiling but cannot override consent.
-- Browser compute runs only while the tab/session is active; browsers and mobile operating systems may throttle or suspend background tabs.
-- All mining proceeds belong to the platform. Participants receive no revenue share and have no withdrawable balance.
+- Native Android and desktop clients use the same authenticated gateway and central pool proxy; Android requires a visible foreground service while mining. The web dashboard remains a separate account-management client.
+- The platform uses exactly one central HashVault Monero wallet. Verified member contributions are tracked separately in the internal reward ledger; no member or device has an individual HashVault wallet. Any withdrawal/payment feature must be backed by an explicitly approved payout policy and reconciliation.
 - Pool-confirmed share acknowledgements and independently verified central-wallet receipts are authoritative.
 - Browser-reported hashrate is stored as device diagnostic telemetry, labelled indicative in member/admin views. It can be falsified and is not evidence of accepted shares, pool revenue or participant earnings.
 - Only proxy-confirmed share responses enter the verified share ledger. The pool gateway is currently designed for one replica until a shared replay/lease store is added.
@@ -47,6 +47,6 @@ See `services/pool-gateway/DEPLOYMENT.md` for the service topology and pre-activ
 
 ## Native installable application
 
-A Flutter application for Android and Windows/Linux/macOS is being developed in `apps/native`. The native shell currently supports member sign-in, profile and referral-code display, and secure per-install device enrollment. RandomX execution is intentionally not available in this milestone; the app cannot start mining. Native mining will remain gated until the platform engine, foreground/background lifecycle, authenticated gateway protocol, and verified-share accounting are implemented and tested.
+The Flutter application for Android and Windows/Linux/macOS is in `apps/native`. It includes member sign-in, profile/referral display, secure device enrollment, native RandomX FFI, an authenticated gateway client, per-device controls and the internal reward-ledger view. Production mining remains gated until the native builds, gateway, single central wallet, payout reconciliation and end-to-end tests are verified.
 
 The `MINE-ME native installable builds` GitHub Actions workflow builds platform release artifacts on their matching hosted runners. These artifacts are development builds, not a production mining release.
