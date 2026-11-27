@@ -195,12 +195,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    CheckboxListTile(
-                      contentPadding: EdgeInsets.zero,
-                      value: _consent,
-                      controlAffinity: ListTileControlAffinity.leading,
-                      title: const Text('J’ai lu et j’accepte les conditions de participation.'),
-                      onChanged: (value) => setState(() => _consent = value ?? false),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Checkbox(
+                          value: _consent,
+                          onChanged: (value) => setState(() => _consent = value ?? false),
+                        ),
+                        const Expanded(
+                          child: Text('J’ai lu et j’accepte les conditions de participation.'),
+                        ),
+                      ],
                     ),
                     const Text(
                       'Le calcul ne démarrera pas sans activation explicite. Lorsqu’il sera disponible, il pourra utiliser une partie des ressources de votre appareil et augmenter la consommation électrique, la chaleur, le bruit et l’usure.',
