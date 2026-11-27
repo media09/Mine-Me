@@ -20,9 +20,11 @@ rm -rf "$PACKAGE_ROOT"
 mkdir -p "$PACKAGE_ROOT/DEBIAN" \
   "$PACKAGE_ROOT/usr/lib/mine-me" \
   "$PACKAGE_ROOT/usr/bin" \
-  "$PACKAGE_ROOT/usr/share/applications"
+  "$PACKAGE_ROOT/usr/share/applications" \
+  "$PACKAGE_ROOT/usr/share/doc/mine-me"
 mkdir -p "$OUTPUT_DIR"
 cp -a "$BUNDLE/." "$PACKAGE_ROOT/usr/lib/mine-me/"
+cp "$ROOT/THIRD_PARTY_NOTICES.md" "$PACKAGE_ROOT/usr/share/doc/mine-me/copyright"
 
 cat > "$PACKAGE_ROOT/DEBIAN/control" <<'CONTROL'
 Package: mine-me
