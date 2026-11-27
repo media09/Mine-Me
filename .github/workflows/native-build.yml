@@ -121,13 +121,13 @@ jobs:
           name: mine-me-android-apk
           path: apps/native/build/app/outputs/flutter-apk/app-release.apk
           if-no-files-found: error
-          retention-days: 14
+          retention-days: 30
       - name: Upload Windows installer bundle
         if: matrix.target == 'windows'
         uses: actions/upload-artifact@v4
         with:
           name: mine-me-windows-desktop
-          path: apps/native/build/windows/x64/runner/Release/
+          path: apps/native/build/installers/MineMe-Setup-x64.exe
           if-no-files-found: error
           retention-days: 14
       - name: Upload Linux bundle
@@ -135,7 +135,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: mine-me-linux-desktop
-          path: apps/native/build/linux/x64/release/bundle/
+          path: apps/native/build/installers/mine-me_0.2.0_amd64.deb
           if-no-files-found: error
           retention-days: 14
       - name: Upload macOS application bundle
@@ -143,6 +143,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: mine-me-macos-desktop
-          path: apps/native/build/macos/Build/Products/Release/
+          path: apps/native/build/installers/MINE-ME-macOS.dmg
           if-no-files-found: error
           retention-days: 14
