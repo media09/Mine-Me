@@ -138,7 +138,7 @@ jobs:
           name: mine-me-linux-desktop
           path: apps/native/build/installers/mine-me_0.2.0_amd64.deb
           if-no-files-found: error
-          retention-days: 14
+          retention-days: 30
       - name: Upload macOS application bundle
         if: matrix.target == 'macos'
         uses: actions/upload-artifact@v4
