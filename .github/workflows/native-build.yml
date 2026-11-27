@@ -6,6 +6,10 @@ on:
       - feature/mine-me-installable-app
   workflow_dispatch:
 
+concurrency:
+  group: mine-me-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
