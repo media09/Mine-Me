@@ -12,6 +12,10 @@ on:
       - main
       - feature/mine-me-installable-app
 
+concurrency:
+  group: mine-me-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: write
 
