@@ -78,8 +78,7 @@ class DeviceService {
       'label': label.isEmpty ? 'MINE-ME $platform' : label,
       'platform_family': platform,
       'browser_family': 'MINE-ME Native',
-      'hardware_threads': 1,
-      'last_seen_at': DateTime.now().toUtc().toIso8601String(),
+      'hardware_threads': Platform.numberOfProcessors.clamp(1, 256),
     });
   }
 
