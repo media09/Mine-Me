@@ -109,8 +109,14 @@ function startProxyAndGateway() {
     if (!Array.isArray(template.pools) || template.pools.length < 1) {
       throw new Error('INVALID_PROXY_CONFIG_TEMPLATE');
     }
+    // HashVault publishes this SHA-256 pin for its TLS pool certificate.
+    // Pinning is required because the upstream certificate is self-signed.
+    const hashVaultFingerprint = '420c7850e09b7c0bdcf748a7da9eb3647daf8515718f36d9ccfdd6b9ff834b14';
     for (const pool of template.pools) {
       pool.user = process.env.CENTRAL_MONERO_WALLET_ADDRESS;
+      if (pool.url === 'pool.hashvault.pro:443' || pool.url === 'pool.hashvault.sh:443') {
+        pool['tls-fingerprint'] = hashVaultFingerprint;
+      }
     }
 
     const privateDir = path.join(ROOT, 'tmp', 'mine-me-proxy');
