@@ -36,10 +36,26 @@ Use the same public publishable key as the web client. Never put a service-role 
 ## Installable builds
 
 ```sh
-flutter build apk --release --dart-define=MINE_ME_SUPABASE_URL=https://mqyqpflamkplhlphrngn.supabase.co --dart-define=MINE_ME_SUPABASE_KEY=YOUR_SUPABASE_PUBLISHABLE_KEY
+flutter build apk --release --target-platform android-arm64 --dart-define=MINE_ME_SUPABASE_URL=https://mqyqpflamkplhlphrngn.supabase.co --dart-define=MINE_ME_SUPABASE_KEY=YOUR_SUPABASE_PUBLISHABLE_KEY
 flutter build windows --release
 flutter build linux --release
 flutter build macos --release
 ```
 
 Builds require their platform toolchains and are not produced by this source-only commit.
+
+
+## Installers produced by CI
+
+The native build workflow publishes these installable packages after all tests pass:
+
+- Android: arm64 APK for direct sideloading.
+- Windows: x64 Setup executable generated with Inno Setup.
+- Linux: amd64 Debian package (`.deb`).
+- macOS: disk image (`.dmg`) containing the application bundle.
+
+CI artifacts are retained for 30 days. Windows and macOS packages are currently unsigned; macOS is not notarized, so the operating system may show an installation warning. Android installation is direct APK sideloading and is not distributed through Google Play.
+
+## Central wallet rule
+
+There is exactly one platform-owned HashVault Monero wallet address. Every member and device contributes through the same pool proxy and the same receiving address. Member XMR amounts are internal accounting credits from verified accepted-share contribution windows and confirmed central-wallet payouts. No member-specific HashVault wallet is created, and no wallet private key is embedded in the application.
