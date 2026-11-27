@@ -297,3 +297,27 @@ grant execute on function private.allocate_central_pool_reward_for_window(text, 
 -- reconciliation workers cannot bypass the accepted-share ledger.
 revoke all on function private.allocate_central_pool_reward(text, jsonb)
   from public, anon, authenticated, service_role;
+
+-- Public PostgREST wrapper. Only the service role can execute it; the actual
+-- allocator and accepted-share aggregation remain in the private schema.
+create or replace function public.reconcile_central_pool_reward_for_window(
+  p_transaction_ref text,
+  p_window_start timestamptz,
+  p_window_end timestamptz
+)
+returns uuid
+language sql
+security definer
+set search_path = ''
+as $$
+  select private.allocate_central_pool_reward_for_window(
+    p_transaction_ref,
+    p_window_start,
+    p_window_end
+  );
+$$;
+
+revoke all on function public.reconcile_central_pool_reward_for_window(text, timestamptz, timestamptz)
+  from public, anon, authenticated;
+grant execute on function public.reconcile_central_pool_reward_for_window(text, timestamptz, timestamptz)
+  to service_role;
