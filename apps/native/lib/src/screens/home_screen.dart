@@ -41,6 +41,18 @@ class _HomeScreenState extends State<HomeScreen> {
     super.dispose();
   }
 
+  Future<void> _saveIntensity(String deviceId, int value) async {
+    try {
+      final user = _client.auth.currentUser;
+      if (user == null) throw Exception('Session expirée.');
+      await _client.from('devices').update({'intensity_percent': value})
+          .eq('id', deviceId).eq('user_id', user.id);
+    } catch (error) {
+      if (mounted) setState(() => _error = error.toString());
+      await _load();
+    }
+  }
+
   Future<void> _startMining(Map<String, dynamic> device) async {
     await _mining.start(device['id'] as String,
       intensityPercent: (device['intensity_percent'] as num?)?.toInt() ?? 20);
@@ -228,6 +240,23 @@ class _HomeScreenState extends State<HomeScreen> {
             subtitle: Text("${device['worker_code']} · ${device['platform_family'] ?? 'Appareil'}"),
             trailing: Text((device['status'] as String?) ?? '—',
               style: const TextStyle(color: Colors.white70, fontSize: 12)),
+          ),
+          if (!blocked && !active) Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(children: [
+                const Text('Intensité CPU', style: TextStyle(color: Colors.white70, fontSize: 12)),
+                const Spacer(),
+                Text('${device['intensity_percent'] ?? 20} %',
+                  style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
+              ]),
+              Slider(
+                value: ((device['intensity_percent'] as num?)?.toDouble() ?? 20).clamp(1, 80),
+                min: 1, max: 80, divisions: 79,
+                onChanged: (value) => setState(() => device['intensity_percent'] = value.round()),
+                onChangeEnd: (value) => _saveIntensity(deviceId, value.round()),
+              ),
+            ]),
           ),
           if (active && running) Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
