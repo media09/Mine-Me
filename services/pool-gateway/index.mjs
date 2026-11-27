@@ -563,6 +563,26 @@ async function handleBrowserMessage(session, rawData) {
     return;
   }
 
+  if (message.type === "pause" || message.type === "stop") {
+    const nextStatus = message.type === "pause" ? "paused" : "stopped";
+    const { data, error } = await supabase.from("devices")
+      .update({ status: nextStatus, active_session_id: null, last_seen_at: new Date().toISOString() })
+      .eq("id", session.claims.deviceId)
+      .eq("user_id", session.claims.sub)
+      .eq("status", "running")
+      .eq("active_session_id", session.gatewaySessionId)
+      .select("id, status")
+      .maybeSingle();
+    if (error || !data || data.status !== nextStatus) {
+      send(session.ws, { type: "error", message: "Impossible de confirmer l’arrêt de cet appareil. La connexion sera fermée par sécurité." });
+      cleanupSession(session, "device control state could not be committed");
+      return;
+    }
+    send(session.ws, { type: "control-ack", status: nextStatus });
+    cleanupSession(session, nextStatus);
+    return;
+  }
+
   if (message.type === "telemetry") {
     await recordTelemetry(session, message);
     return;
