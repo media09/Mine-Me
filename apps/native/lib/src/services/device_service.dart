@@ -27,7 +27,7 @@ class DeviceService {
     return generated;
   }
 
-  Future<void> enroll() async {
+  Future<String> enroll() async {
     final user = _client.auth.currentUser;
     if (user == null) throw Exception('Connectez-vous pour associer cet appareil.');
 
@@ -46,7 +46,7 @@ class DeviceService {
         .eq('user_id', user.id)
         .eq('installation_id', await _installationId())
         .maybeSingle();
-    if (existing != null) return;
+    if (existing != null) return existing['id'] as String;
 
     final info = DeviceInfoPlugin();
     String platform;
@@ -72,14 +72,15 @@ class DeviceService {
       label = 'MINE-ME Desktop';
     }
 
-    await _client.from('devices').insert({
+    final created = await _client.from('devices').insert({
       'user_id': user.id,
       'installation_id': await _installationId(),
       'label': label.isEmpty ? 'MINE-ME $platform' : label,
       'platform_family': platform,
       'browser_family': 'MINE-ME Native',
       'hardware_threads': Platform.numberOfProcessors.clamp(1, 256),
-    });
+    }).select('id').single();
+    return created['id'] as String;
   }
 
 }
