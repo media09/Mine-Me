@@ -54,6 +54,7 @@ export function verifySessionToken(token, secret, nowSeconds = Math.floor(Date.n
     typeof payload.jti !== "string" ||
     payload.jti.length < 16 ||
     payload.consentVersion !== "2026-11-19-v1" ||
+    (payload.traceId !== undefined && (typeof payload.traceId !== "string" || !/^[a-f0-9]{32}$/i.test(payload.traceId))) ||
     !Number.isInteger(payload.intensityPercent) ||
     payload.intensityPercent < 1 ||
     payload.intensityPercent > 80
