@@ -2,9 +2,20 @@
 
 Flutter application source for Android and desktop (Windows, macOS and Linux).
 
-## Current milestone
+## Current implementation
 
-This initial native shell provides Supabase email/password sign-in, secure Supabase session persistence through the Supabase Flutter SDK, member profile display, device enrollment and referral-code display. It intentionally does **not** start RandomX or connect to the pool. Native mining must remain disabled until the native engine, gateway protocol, Android foreground service, desktop lifecycle controls and end-to-end accounting tests are complete.
+- Supabase member sign-in with the Supabase session persisted in platform secure storage.
+- Member profile, referral code, enrolled devices and internal XMR reward balance.
+- One central HashVault wallet for the whole platform. Members and devices do not have individual pool wallets; member balances are internal ledger credits.
+- Device-bound short-lived server-signed gateway sessions. The app never receives the service-role key, gateway signing secret, or any wallet private key.
+- Native RandomX C API bridge, built from upstream RandomX v1.2.1. Desktop requests the full dataset mode; Android uses light mode by default to avoid reserving about 2.1 GiB of RAM.
+- Native worker runs in a dedicated Dart isolate and submits candidate shares only through the authenticated MINE-ME gateway.
+- Android mining sessions require a visible foreground notification, wake lock and explicit user action. No auto-start on boot.
+- Per-device start, pause and stop controls; pause/stop are committed by the gateway to the device record.
+
+Mining remains subject to the server-side `mining_enabled` flag, emergency pause, member consent, account status, device authorization and the 200-device platform cap. The development branch does not activate production mining or deploy migrations.
+
+The reward ledger only credits confirmed central-wallet payouts. Distribution is calculated from accepted-share difficulty recorded by the trusted gateway in an explicitly reconciled contribution window. Client-reported hashrate is diagnostic only and never creates earnings.
 
 ## Build prerequisites
 
