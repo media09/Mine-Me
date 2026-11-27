@@ -19,6 +19,7 @@ WizardStyle=modern
 
 [Files]
 Source: "..\..\build\windows\x64\runner\Release\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "..\\..\\THIRD_PARTY_NOTICES.md"; DestDir: "{app}"; DestName: "THIRD_PARTY_NOTICES.md"; Flags: ignoreversion
 
 [Icons]
 Name: "{autoprograms}\MINE-ME"; Filename: "{app}\mine_me_native.exe"
