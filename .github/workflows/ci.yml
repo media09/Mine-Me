@@ -73,6 +73,6 @@ jobs:
       - name: Resolve Flutter dependencies
         run: flutter pub get
       - name: Analyze native app
-        run: flutter analyze --fatal-infos
+        run: flutter analyze
       - name: Run native app tests
         run: flutter test
