@@ -48,7 +48,9 @@ class NativeMiningController extends ChangeNotifier {
     errorMessage = null;
     try {
       final user = _client.auth.currentUser;
-      if (user == null) throw const MiningGatewayException('Connectez-vous avant de démarrer.');
+      if (user == null) {
+        throw const MiningGatewayException('Connectez-vous avant de démarrer.');
+      }
 
       // A paused/stopped member device must be explicitly re-enrolled.
       await _client.from('devices')
@@ -166,7 +168,10 @@ class NativeMiningController extends ChangeNotifier {
         _fail((message['message'] as String?) ?? 'Erreur du moteur RandomX.');
         break;
       case 'stopped':
-        if (state == NativeMiningState.stopping) _setState(NativeMiningState.idle);
+        if (state == NativeMiningState.stopping) {
+          activeDeviceId = null;
+          _setState(NativeMiningState.idle);
+        }
         break;
     }
   }
