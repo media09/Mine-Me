@@ -132,7 +132,7 @@ async function readPlatformState(claims, { expectedSessionId = null } = {}) {
     ? Math.min(80, Math.max(1, Math.trunc(maxIntensityValue)))
     : 80;
 
-  if (!miningEnabled) throw new Error("Browser mining is globally disabled.");
+  if (!miningEnabled) throw new Error("Mining is globally disabled.");
   if (emergencyPause) throw new Error("The global emergency pause is enabled.");
   if (claims.intensityPercent > maxIntensity || device.intensity_percent < claims.intensityPercent) {
     throw new Error("Device intensity has changed; obtain a new mining session.");
@@ -641,7 +641,7 @@ server.on("upgrade", (request, socket, head) => {
     if (!session.authenticated) pendingAuthCount += 1;
   }
 
-  if (pathname !== config.wsPath || !origin || !config.allowedOrigins.includes(origin)) {
+  if (pathname !== config.wsPath || (origin && !config.allowedOrigins.includes(origin))) {
     socket.write("HTTP/1.1 403 Forbidden\\r\\nConnection: close\\r\\n\\r\\n");
     socket.destroy();
     return;
