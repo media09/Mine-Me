@@ -54,7 +54,15 @@ class NativeRandomXWorker {
 Future<void> _nativeRandomXEntry(Map<String, Object> initial) async {
   final mainPort = initial['events'] as SendPort;
   final commands = ReceivePort();
-  final engine = RandomXEngine.load();
+  mainPort.send(commands.sendPort);
+  late final RandomXEngine engine;
+  try {
+    engine = RandomXEngine.load();
+  } catch (error) {
+    mainPort.send({'type': 'error', 'message': error.toString()});
+    commands.close();
+    return;
+  }
   var running = true;
   var paused = false;
   var intensity = initial['intensityPercent'] as int;
@@ -104,7 +112,6 @@ Future<void> _nativeRandomXEntry(Map<String, Object> initial) async {
     final fastMode = await engine.initialise(
       job['seedHash'] as String,
     );
-    mainPort.send(commands.sendPort);
     mainPort.send({'type': 'ready', 'mode': fastMode ? 'fast' : 'light'});
     while (running) {
       if (paused) {
