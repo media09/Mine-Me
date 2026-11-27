@@ -42,6 +42,9 @@ port automatically. Do not expose port 3333 or the Gateway's private port.
 - Do not store a Monero seed, mnemonic, private spend key, or private view key.
 - The public central wallet address is written to a private runtime proxy
   configuration under `tmp/mine-me-proxy/`, with restrictive file permissions.
+- Both HashVault upstreams use the published SHA-256 TLS certificate pin
+  `420c7850e09b7c0bdcf748a7da9eb3647daf8515718f36d9ccfdd6b9ff834b14`.
+  This is strict certificate pinning, not disabled TLS verification.
 - The app does not enable mining in Supabase. Keep
   `mining_enabled=false` and `global_emergency_pause=true` until end-to-end
   tests and payout reconciliation are complete.
