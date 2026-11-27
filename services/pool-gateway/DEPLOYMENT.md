@@ -19,7 +19,7 @@ Copy `.env.example` to a protected server-only environment file. Set:
 - `MINING_GATEWAY_TOKEN_SECRET` to a high-entropy secret of at least 32 bytes. Use the exact same value in the Next.js server environment.
 - `ALLOWED_WEB_ORIGINS=https://mine-me.671btweb.workers.dev` (exact browser origin only; no `/minime` path and no SharedBoost hostname; native clients authenticate with a short-lived signed session token and do not send an Origin header).
 - `POOL_PROXY_HOST=127.0.0.1` and `POOL_PROXY_PORT=3333`.
-- Set `TRUST_PROXY_HEADERS=true` only when the gateway is reachable exclusively through your own reverse proxy, and configure that proxy to overwrite `X-Real-IP`. Keep `MAX_ACTIVE_WORKERS`, `MAX_PENDING_AUTH_CONNECTIONS` and `MAX_CONNECTION_ATTEMPTS_PER_MINUTE` within the capacity of the gateway host.
+- Set `TRUST_PROXY_HEADERS=true` only when the gateway is reachable exclusively through your own reverse proxy, and configure that proxy to overwrite `X-Real-IP`. The SharedBoost Passenger adapter does this safely by translating Passenger's non-spoofable `!~Passenger-Client-Address` secure header into `X-Real-IP`; do not blindly trust client-supplied forwarding headers. Keep `MAX_ACTIVE_WORKERS`, `MAX_PENDING_AUTH_CONNECTIONS` and `MAX_CONNECTION_ATTEMPTS_PER_MINUTE` within the capacity of the gateway host.
 
 Set the web application server environment:
 - `MINING_GATEWAY_TOKEN_SECRET`: same secret as the gateway.
