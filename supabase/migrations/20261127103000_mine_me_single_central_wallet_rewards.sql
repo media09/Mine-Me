@@ -32,7 +32,8 @@ create table if not exists public.pool_payouts (
   source text not null default 'hashvault_api' check (source in ('hashvault_api', 'admin_reconciliation')),
   created_at timestamptz not null default now(),
   check (network_fee <= gross_amount),
-  check (share_window_start is null or share_window_end is null or share_window_start < share_window_end)
+  check ((share_window_start is null and share_window_end is null) or
+         (share_window_start is not null and share_window_end is not null and share_window_start < share_window_end))
 );
 
 create table if not exists public.reward_distribution_batches (
@@ -181,7 +182,7 @@ begin
   select
     v_batch_id,
     c.member_id,
-    round((v_payout.gross_amount - v_payout.network_fee) * c.weight / v_total_weight, 12),
+    trunc((v_payout.gross_amount - v_payout.network_fee) * c.weight / v_total_weight, 12),
     c.weight,
     c.accepted_share_count
   from jsonb_to_recordset(p_contributions)
