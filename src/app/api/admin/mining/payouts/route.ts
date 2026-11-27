@@ -99,7 +99,7 @@ export async function POST(request: Request) {
     network_fee: formatAtomic(feeAtomic),
     received_at: receivedAt,
     pool_height: poolHeight,
-    source: "manual_reconciliation",
+    source: "admin_reconciliation",
     share_window_start: windowStart,
     share_window_end: windowEnd,
   };
