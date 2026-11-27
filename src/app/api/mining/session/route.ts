@@ -59,9 +59,14 @@ export async function POST(request: NextRequest) {
       userId = data.user.id;
     }
 
-    const body = await request.json().catch(() => null) as { deviceId?: unknown } | null;
+    const body = await request.json().catch(() => null) as { deviceId?: unknown; traceId?: unknown } | null;
     if (!body || typeof body.deviceId !== "string" || !/^[0-9a-f-]{36}$/i.test(body.deviceId)) {
       return jsonError("Identifiant d’appareil invalide.", 400);
+    }
+
+    const traceId = body.traceId === undefined ? randomUUID().replaceAll('-', '') : body.traceId;
+    if (typeof traceId !== 'string' || !/^[a-f0-9]{32}$/i.test(traceId)) {
+      return jsonError('Identifiant de diagnostic invalide.', 400);
     }
 
     const secret = process.env.MINING_GATEWAY_TOKEN_SECRET;
@@ -148,6 +153,7 @@ export async function POST(request: NextRequest) {
       aud: TOKEN_AUDIENCE,
       sub: userId,
       deviceId: device.id,
+      traceId,
       workerCode: device.worker_code,
       consentVersion: CONSENT_VERSION,
       intensityPercent,
