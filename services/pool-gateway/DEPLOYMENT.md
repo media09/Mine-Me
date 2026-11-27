@@ -1,6 +1,6 @@
 # MINE-ME pool gateway deployment
 
-This service is separate from the Next.js website and must run continuously on an always-on Linux host or container platform. It accepts browser WebSocket connections and forwards Stratum traffic only to the local HashVault proxy.
+This service is separate from the Next.js website and must run continuously on an always-on Linux host or container platform. It accepts authenticated MINE-ME browser and native-client WebSocket connections and forwards Stratum traffic only to the local HashVault proxy.
 
 ## Required services
 
@@ -17,7 +17,7 @@ Copy `.env.example` to a protected server-only environment file. Set:
 - `SUPABASE_URL` to the MINE-ME project URL.
 - `SUPABASE_SERVICE_ROLE_KEY` to a server-only Supabase secret key. Never expose it to the browser or commit it.
 - `MINING_GATEWAY_TOKEN_SECRET` to a high-entropy secret of at least 32 bytes. Use the exact same value in the Next.js server environment.
-- `ALLOWED_WEB_ORIGINS=https://app.sharedboost.com`.
+- `ALLOWED_WEB_ORIGINS=https://YOUR-MINE-ME-APP-ORIGIN` (exact browser origin; native clients authenticate with a short-lived signed session token and do not send an Origin header).
 - `POOL_PROXY_HOST=127.0.0.1` and `POOL_PROXY_PORT=3333`.
 - Set `TRUST_PROXY_HEADERS=true` only when the gateway is reachable exclusively through your own reverse proxy, and configure that proxy to overwrite `X-Real-IP`. Keep `MAX_ACTIVE_WORKERS`, `MAX_PENDING_AUTH_CONNECTIONS` and `MAX_CONNECTION_ATTEMPTS_PER_MINUTE` within the capacity of the gateway host.
 
@@ -88,10 +88,11 @@ The gateway health endpoint is `http://127.0.0.1:8081/healthz`; keep it private 
 5. Start the local proxy and verify it connects upstream over TLS.
 6. Start the gateway and verify `/healthz`.
 7. Confirm only the exact web origin can upgrade to `/ws`.
-8. Run controlled tests with a disposable worker and confirm pool-side accepted and rejected share acknowledgements.
+8. Run controlled tests with disposable browser, Android and desktop workers and confirm pool-side accepted and rejected share acknowledgements.
 9. Confirm gateway revalidation disconnects a worker after account suspension, consent mismatch, admin pause, device pause or emergency stop.
-10. Reconcile a real central-wallet payout before public activation.
+10. Configure exactly one platform-owned HashVault Monero wallet address (public address only; never a seed/private key), verify every proxy worker submits through it, and reconcile a real central-wallet payout before public activation.
 11. Confirm the gateway rejects duplicate/replayed tokens, duplicate device sessions, paused devices, suspended accounts, invalid consent versions and exhausted per-device nonce partitions.
-12. Configure monitoring for pending-auth caps, per-IP connection throttles, proxy reconnects, pool rejection rates and DB cleanup failures.
+12. Confirm reward allocations are posted only from pool-verified accepted-share contribution weights against confirmed payouts received by the one central wallet; member balances are internal ledger entries, not individual HashVault wallets.
+13. Configure monitoring for pending-auth caps, per-IP connection throttles, proxy reconnects, pool rejection rates and DB cleanup failures.
 
 Keep `mining_enabled=false` and `global_emergency_pause=true` until every item above is complete. A configured gateway URL is not proof that the proxy or upstream pool is healthy.
