@@ -3,6 +3,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'src/app.dart';
+import 'src/services/android_mining_service.dart';
 import 'src/config.dart';
 
 class MineMeSecureAuthStorage extends LocalStorage {
@@ -30,6 +31,7 @@ class MineMeSecureAuthStorage extends LocalStorage {
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  AndroidMiningService.initialise();
   await Supabase.initialize(
     url: MineMeConfig.supabaseUrl,
     publishableKey: MineMeConfig.supabasePublishableKey,
