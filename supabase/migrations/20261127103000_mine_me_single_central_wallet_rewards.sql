@@ -194,6 +194,7 @@ $$;
 
 revoke all on function private.allocate_central_pool_reward(text, jsonb)
   from public, anon, authenticated, service_role;
+grant usage on schema private to service_role;
 grant execute on function private.allocate_central_pool_reward(text, jsonb)
   to service_role;
 
