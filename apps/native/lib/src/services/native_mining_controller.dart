@@ -59,6 +59,8 @@ class NativeMiningController extends ChangeNotifier {
         _onGatewayMessage,
         onError: (Object error) => _fail('Connexion au service de calcul interrompue.'),
         onDone: () {
+          unawaited(_worker?.stop());
+          _worker = null;
           if (state == NativeMiningState.running ||
               state == NativeMiningState.initialising ||
               state == NativeMiningState.connecting) {
