@@ -15,6 +15,8 @@ class _HomeScreenState extends State<HomeScreen> {
   String? _error;
   Map<String, dynamic>? _profile;
   List<Map<String, dynamic>> _devices = [];
+  BigInt _availableXmr = BigInt.zero;
+  BigInt _heldXmr = BigInt.zero;
 
   @override
   void initState() {
@@ -33,10 +35,21 @@ class _HomeScreenState extends State<HomeScreen> {
       final devices = await _client.from('devices')
           .select('id, label, worker_code, platform_family, status, intensity_percent, last_seen_at')
           .eq('user_id', user.id).order('created_at');
+      final rewardRows = await _client.from('member_reward_ledger')
+          .select('amount, status').eq('member_id', user.id);
+      var available = BigInt.zero;
+      var held = BigInt.zero;
+      for (final row in rewardRows) {
+        final amount = _xmrToAtomic(row['amount'].toString());
+        if (row['status'] == 'available') available += amount;
+        if (row['status'] == 'held') held += amount;
+      }
       if (!mounted) return;
       setState(() {
         _profile = profile;
         _devices = List<Map<String, dynamic>>.from(devices);
+        _availableXmr = available;
+        _heldXmr = held;
       });
     } catch (error) {
       if (mounted) setState(() => _error = error.toString());
@@ -76,6 +89,8 @@ class _HomeScreenState extends State<HomeScreen> {
             const Text('Votre espace membre MINE-ME', style: TextStyle(color: Colors.white60)),
             const SizedBox(height: 24),
             _statusCard(),
+            const SizedBox(height: 14),
+            _centralRewardCard(),
             const SizedBox(height: 18),
             Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
               Text('Mes appareils', style: Theme.of(context).textTheme.titleLarge),
@@ -103,6 +118,47 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
+
+  BigInt _xmrToAtomic(String raw) {
+    final parts = raw.split('.');
+    final whole = BigInt.tryParse(parts.first) ?? BigInt.zero;
+    final fraction = (parts.length > 1 ? parts[1] : '').padRight(12, '0');
+    final safeFraction = fraction.substring(0, 12);
+    return whole * BigInt.from(1000000000000) + (BigInt.tryParse(safeFraction) ?? BigInt.zero);
+  }
+
+  String _formatXmr(BigInt atomic) {
+    final unit = BigInt.from(1000000000000);
+    final whole = atomic ~/ unit;
+    final fraction = (atomic % unit).toString().padLeft(12, '0');
+    return '${whole.toString()}.${fraction}';
+  }
+
+  Widget _centralRewardCard() => Card(
+    child: Padding(
+      padding: const EdgeInsets.all(18),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        const Text('VOS RÉCOMPENSES XMR',
+          style: TextStyle(color: Color(0xFFADFF65), fontSize: 11, letterSpacing: 1.4)),
+        const SizedBox(height: 8),
+        Text('${_formatXmr(_availableXmr)} XMR',
+          style: const TextStyle(fontSize: 25, fontWeight: FontWeight.w800)),
+        const SizedBox(height: 5),
+        Text('En attente de validation : ${_formatXmr(_heldXmr)} XMR',
+          style: const TextStyle(color: Colors.white60, fontSize: 12)),
+        const Divider(height: 22),
+        const Row(children: [
+          Icon(Icons.account_balance_wallet_outlined, size: 17, color: Color(0xFFADFF65)),
+          SizedBox(width: 8),
+          Expanded(child: Text('Un seul wallet HashVault central pour toute la plateforme.',
+            style: TextStyle(color: Colors.white70, fontSize: 12))),
+        ]),
+        const SizedBox(height: 6),
+        const Text('Ce montant est votre solde comptable interne, calculé à partir des contributions vérifiées. Il ne s’agit pas d’un wallet Monero individuel.',
+          style: TextStyle(color: Colors.white54, fontSize: 11, height: 1.5)),
+      ]),
+    ),
+  );
 
   Widget _statusCard() {
     final status = _profile?['account_status'] ?? 'Vérification…';
