@@ -37,7 +37,7 @@ Use cPanel Node.js Selector's **Run NPM Install** after placing package.json.
 - `CENTRAL_MONERO_WALLET_ADDRESS` (platform public receiving address only)
 - `VLTRIG_PROXY_PATH=bin/vltrig-proxy`
 
-The browser application origin is `https://mine-me.671btweb.workers.dev` (origin only; do not include `/minime`). SharedBoost is only the Gateway host, not the browser origin. The adapter sets `GATEWAY_BIND_HOST=127.0.0.1`, `GATEWAY_WS_PATH=/ws`,
+The browser application origin is `https://mine-me.671btweb.workers.dev` (origin only; do not include `/minime`). SharedBoost is only the Gateway host, not the browser origin. The adapter reads Passenger's non-spoofable `!~Passenger-Client-Address` secure header, overwrites any client-supplied `X-Real-IP`, and enables `TRUST_PROXY_HEADERS=true` only for the local Gateway child. This preserves per-client connection throttling behind Passenger without trusting browser-supplied IP headers. The adapter sets `GATEWAY_BIND_HOST=127.0.0.1`, `GATEWAY_WS_PATH=/ws`,
 `POOL_PROXY_HOST=127.0.0.1`, `POOL_PROXY_PORT=3333`, and a private Gateway
 port automatically. Do not expose port 3333 or the Gateway's private port.
 
