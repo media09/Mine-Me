@@ -1,0 +1,38 @@
+name: SharedBoost Passenger Gateway validation
+
+on:
+  pull_request:
+    branches:
+      - feature/mine-me-installable-app
+    paths:
+      - "services/pool-gateway/**"
+      - "services/pool-proxy/**"
+      - ".github/workflows/sharedboost-gateway.yml"
+  push:
+    branches:
+      - deploy/sharedboost-passenger-gateway
+    paths:
+      - "services/pool-gateway/**"
+      - "services/pool-proxy/**"
+      - ".github/workflows/sharedboost-gateway.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Check Passenger adapter syntax
+        run: node --check services/pool-gateway/passenger-app.cjs
+      - name: Run Gateway protocol tests
+        run: npm run test:gateway
