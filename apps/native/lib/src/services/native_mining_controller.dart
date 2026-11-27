@@ -23,22 +23,26 @@ class NativeMiningController extends ChangeNotifier {
 
   NativeMiningState state = NativeMiningState.idle;
   String? errorMessage;
+  String? activeDeviceId;
   String? workerCode;
   String? randomXMode;
   double hashesPerSecond = 0;
   int acceptedShares = 0;
   int rejectedShares = 0;
 
+  int _requestedIntensity = 20;
   MiningGatewayConnection? _gateway;
   NativeRandomXWorker? _worker;
   StreamSubscription<Map<String, dynamic>>? _gatewaySubscription;
   StreamSubscription<Map<String, dynamic>>? _workerSubscription;
   bool _disposed = false;
 
-  Future<void> start(String deviceId) async {
+  Future<void> start(String deviceId, {int intensityPercent = 20}) async {
     if (state != NativeMiningState.idle &&
         state != NativeMiningState.paused &&
         state != NativeMiningState.error) return;
+    activeDeviceId = deviceId;
+    _requestedIntensity = intensityPercent.clamp(1, 80);
     _setState(NativeMiningState.authorising);
     errorMessage = null;
     try {
@@ -109,7 +113,7 @@ class NativeMiningController extends ChangeNotifier {
         _setState(NativeMiningState.initialising);
         final worker = await NativeRandomXWorker.start(
           job: job,
-          intensityPercent: 20,
+          intensityPercent: _requestedIntensity,
         );
         _worker = worker;
         _workerSubscription = worker.events.listen(_onWorkerMessage);
@@ -185,6 +189,7 @@ class NativeMiningController extends ChangeNotifier {
     await _gateway?.close();
     _worker = null;
     _gateway = null;
+    activeDeviceId = null;
     _setState(NativeMiningState.idle);
   }
 
