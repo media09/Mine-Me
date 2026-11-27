@@ -98,16 +98,30 @@ class MiningGatewayService {
       body: jsonEncode({'deviceId': deviceId}),
     );
 
-    Map<String, dynamic> body;
+    Map<String, dynamic>? body;
     try {
-      body = jsonDecode(response.body) as Map<String, dynamic>;
+      final decoded = jsonDecode(response.body);
+      if (decoded is Map<String, dynamic>) body = decoded;
     } catch (_) {
-      throw const MiningGatewayException('Le service MINE-ME a retourné une réponse invalide.');
+      // A reverse proxy, stale Worker deployment, or unavailable route can
+      // return HTML/plain text. Keep the HTTP diagnostics without exposing the
+      // response body, which may contain infrastructure details.
+    }
+
+    if (body == null) {
+      final contentType = response.headers['content-type'] ?? 'inconnu';
+      throw MiningGatewayException(
+        'Réponse du serveur illisible (HTTP ${response.statusCode}, type : $contentType). '
+        'Vérifiez le déploiement de l’API MINE-ME.',
+      );
     }
 
     if (response.statusCode != 200) {
+      final serverMessage = body['error'];
       throw MiningGatewayException(
-        (body['error'] as String?) ?? 'Impossible d’autoriser cet appareil.',
+        serverMessage is String && serverMessage.isNotEmpty
+          ? serverMessage
+          : 'Le serveur a refusé la session (HTTP ${response.statusCode}).',
       );
     }
 
