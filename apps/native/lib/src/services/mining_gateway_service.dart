@@ -8,8 +8,18 @@ import 'package:web_socket_channel/web_socket_channel.dart';
 import '../config.dart';
 
 class MiningGatewayException implements Exception {
-  const MiningGatewayException(this.message);
+  const MiningGatewayException(
+    this.message, {
+    this.code = 'mining_gateway_error',
+    this.httpStatus,
+    this.contentType,
+  });
+
   final String message;
+  final String code;
+  final int? httpStatus;
+  final String? contentType;
+
   @override
   String toString() => message;
 }
@@ -37,7 +47,12 @@ class MiningGatewayConnection {
     required String nonce,
     required String result,
   }) {
-    if (_closed) throw const MiningGatewayException('La session de calcul est fermée.');
+    if (_closed) {
+      throw const MiningGatewayException(
+        'La session de calcul est fermée.',
+        code: 'gateway_socket_closed',
+      );
+    }
     _channel.sink.add(jsonEncode({
       'type': 'submit',
       'jobId': jobId,
@@ -46,7 +61,11 @@ class MiningGatewayConnection {
     }));
   }
 
-  void reportTelemetry({required double hashesPerSecond, required int hashesComputed, required double sampleSeconds}) {
+  void reportTelemetry({
+    required double hashesPerSecond,
+    required int hashesComputed,
+    required double sampleSeconds,
+  }) {
     if (_closed) return;
     _channel.sink.add(jsonEncode({
       'type': 'telemetry',
@@ -82,7 +101,10 @@ class MiningGatewayService {
   Future<MiningGatewayConnection> connect({required String deviceId}) async {
     final accessToken = _client.auth.currentSession?.accessToken;
     if (accessToken == null || accessToken.isEmpty) {
-      throw const MiningGatewayException('Votre session membre a expiré. Reconnectez-vous.');
+      throw const MiningGatewayException(
+        'Votre session membre a expiré. Reconnectez-vous.',
+        code: 'member_session_missing',
+      );
     }
 
     final endpoint = Uri.parse(
@@ -103,16 +125,16 @@ class MiningGatewayService {
       final decoded = jsonDecode(response.body);
       if (decoded is Map<String, dynamic>) body = decoded;
     } catch (_) {
-      // A reverse proxy, stale Worker deployment, or unavailable route can
-      // return HTML/plain text. Keep the HTTP diagnostics without exposing the
-      // response body, which may contain infrastructure details.
+      // Never persist or expose an HTML body returned by an infrastructure proxy.
     }
 
+    final contentType = response.headers['content-type'] ?? 'inconnu';
     if (body == null) {
-      final contentType = response.headers['content-type'] ?? 'inconnu';
       throw MiningGatewayException(
-        'Réponse du serveur illisible (HTTP ${response.statusCode}, type : $contentType). '
-        'Vérifiez le déploiement de l’API MINE-ME.',
+        'Réponse du serveur illisible (HTTP ${response.statusCode}, type : $contentType). Vérifiez le déploiement de l’API MINE-ME.',
+        code: 'session_http_unparseable',
+        httpStatus: response.statusCode,
+        contentType: contentType,
       );
     }
 
@@ -120,8 +142,11 @@ class MiningGatewayService {
       final serverMessage = body['error'];
       throw MiningGatewayException(
         serverMessage is String && serverMessage.isNotEmpty
-          ? serverMessage
-          : 'Le serveur a refusé la session (HTTP ${response.statusCode}).',
+            ? serverMessage
+            : 'Le serveur a refusé la session (HTTP ${response.statusCode}).',
+        code: 'session_http_rejected',
+        httpStatus: response.statusCode,
+        contentType: contentType,
       );
     }
 
@@ -129,7 +154,10 @@ class MiningGatewayService {
     final gatewayUrl = body['gatewayUrl'];
     if (token is! String || gatewayUrl is! String ||
         !gatewayUrl.startsWith('wss://')) {
-      throw const MiningGatewayException('La configuration sécurisée du gateway est invalide.');
+      throw const MiningGatewayException(
+        'La configuration sécurisée du gateway est invalide.',
+        code: 'gateway_config_invalid',
+      );
     }
 
     final channel = WebSocketChannel.connect(Uri.parse(gatewayUrl));
@@ -139,7 +167,10 @@ class MiningGatewayService {
       return MiningGatewayConnection._(channel);
     } catch (_) {
       await channel.sink.close();
-      throw const MiningGatewayException('Connexion sécurisée au service de calcul impossible.');
+      throw const MiningGatewayException(
+        'Connexion sécurisée au service de calcul impossible.',
+        code: 'gateway_ws_connect_failed',
+      );
     }
   }
 }
