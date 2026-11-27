@@ -1,6 +1,6 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 
-export const TOKEN_ISSUER = "mine-me-web";
+export const TOKEN_ISSUER = "mine-me-client";
 export const TOKEN_AUDIENCE = "mine-me-pool-gateway";
 export const TOKEN_MAX_TTL_SECONDS = 120;
 
@@ -108,7 +108,7 @@ export function buildProxyLogin(workerCode) {
     params: {
       login: workerCode,
       pass: "x",
-      agent: "MINE-ME-Browser/0.1",
+      agent: "MINE-ME/0.2",
       rigid: workerCode,
       algo: ["rx/0"],
     },
