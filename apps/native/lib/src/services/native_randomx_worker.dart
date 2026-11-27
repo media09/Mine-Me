@@ -85,7 +85,7 @@ Future<void> _nativeRandomXEntry(Map<String, Object> initial) async {
         try {
           if (next['seedHash'] != job['seedHash']) {
             engine.dispose();
-            await engine.initialise(next['seedHash'] as String, fastMode: true);
+            await engine.initialise(next['seedHash'] as String);
           }
           job = next;
           blob = _hexToBytes(job['blob'] as String);
@@ -103,7 +103,6 @@ Future<void> _nativeRandomXEntry(Map<String, Object> initial) async {
   try {
     final fastMode = await engine.initialise(
       job['seedHash'] as String,
-      fastMode: true,
     );
     mainPort.send(commands.sendPort);
     mainPort.send({'type': 'ready', 'mode': fastMode ? 'fast' : 'light'});
