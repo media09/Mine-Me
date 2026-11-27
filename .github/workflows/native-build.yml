@@ -56,8 +56,44 @@ jobs:
         run: flutter analyze
       - name: Test
         run: flutter test
+      - name: Build native RandomX library for Android
+        if: matrix.target == 'apk'
+        shell: bash
+        run: |
+          NDK_PATH=$(find "$ANDROID_SDK_ROOT/ndk" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n1)
+          cmake -S native/randomx -B build/randomx-android -DCMAKE_TOOLCHAIN_FILE="$NDK_PATH/build/cmake/android.toolchain.cmake" -DANDROID_ABI=arm64-v8a -DANDROID_PLATFORM=android-24 -DCMAKE_BUILD_TYPE=Release
+          cmake --build build/randomx-android --target mine_me_randomx --parallel 2
+          mkdir -p android/app/src/main/jniLibs/arm64-v8a
+          cp build/randomx-android/libmine_me_randomx.so android/app/src/main/jniLibs/arm64-v8a/
+      - name: Build native RandomX library for Windows
+        if: matrix.target == 'windows'
+        run: |
+          cmake -S native/randomx -B build/randomx-windows -A x64
+          cmake --build build/randomx-windows --config Release --target mine_me_randomx --parallel 2
+      - name: Build native RandomX library for Linux
+        if: matrix.target == 'linux'
+        run: |
+          cmake -S native/randomx -B build/randomx-linux -DCMAKE_BUILD_TYPE=Release
+          cmake --build build/randomx-linux --target mine_me_randomx --parallel 2
+      - name: Build native RandomX library for macOS
+        if: matrix.target == 'macos'
+        run: |
+          cmake -S native/randomx -B build/randomx-macos -DCMAKE_BUILD_TYPE=Release
+          cmake --build build/randomx-macos --target mine_me_randomx --parallel 2
       - name: Build release
         run: flutter build ${{ matrix.target }} --release
+      - name: Bundle native RandomX library on Windows
+        if: matrix.target == 'windows'
+        shell: pwsh
+        run: Copy-Item build/randomx-windows/Release/mine_me_randomx.dll build/windows/x64/runner/Release/
+      - name: Bundle native RandomX library on Linux
+        if: matrix.target == 'linux'
+        run: cp build/randomx-linux/libmine_me_randomx.so build/linux/x64/release/bundle/
+      - name: Bundle native RandomX library on macOS
+        if: matrix.target == 'macos'
+        run: |
+          mkdir -p build/macos/Build/Products/Release/mine_me_native.app/Contents/Frameworks
+          cp build/randomx-macos/libmine_me_randomx.dylib build/macos/Build/Products/Release/mine_me_native.app/Contents/Frameworks/
       - name: Upload Android APK
         if: matrix.target == 'apk'
         uses: actions/upload-artifact@v4
