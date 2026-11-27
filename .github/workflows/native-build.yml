@@ -146,4 +146,4 @@ jobs:
           name: mine-me-macos-desktop
           path: apps/native/build/installers/MINE-ME-macOS.dmg
           if-no-files-found: error
-          retention-days: 14
+          retention-days: 30
