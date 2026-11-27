@@ -70,9 +70,8 @@ class NativeMiningController extends ChangeNotifier {
           unawaited(_worker?.stop());
           unawaited(AndroidMiningService.stop());
           _worker = null;
-          if (state == NativeMiningState.running ||
-              state == NativeMiningState.initialising ||
-              state == NativeMiningState.connecting) {
+          if (state != NativeMiningState.paused && state != NativeMiningState.error) {
+            activeDeviceId = null;
             _setState(NativeMiningState.idle);
           }
         },
@@ -102,9 +101,12 @@ class NativeMiningController extends ChangeNotifier {
       case 'heartbeat-ack':
         break;
       case 'control-ack':
-        _setState(message['status'] == 'paused'
-            ? NativeMiningState.paused
-            : NativeMiningState.idle);
+        if (message['status'] == 'paused') {
+          _setState(NativeMiningState.paused);
+        } else {
+          activeDeviceId = null;
+          _setState(NativeMiningState.idle);
+        }
         break;
       case 'error':
         _fail((message['message'] as String?) ?? 'Le service de calcul a refusé la session.');
