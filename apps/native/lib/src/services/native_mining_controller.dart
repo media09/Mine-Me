@@ -42,6 +42,12 @@ class NativeMiningController extends ChangeNotifier {
     if (state != NativeMiningState.idle &&
         state != NativeMiningState.paused &&
         state != NativeMiningState.error) return;
+
+    // Paused/failed sessions may still own a worker, socket, and subscriptions.
+    // Dispose them before creating a replacement to avoid duplicate miners.
+    if (state == NativeMiningState.paused || state == NativeMiningState.error) {
+      await disposeSession();
+    }
     activeDeviceId = deviceId;
     _requestedIntensity = intensityPercent.clamp(1, 80);
     _setState(NativeMiningState.authorising);
@@ -57,7 +63,7 @@ class NativeMiningController extends ChangeNotifier {
           .update({'status': 'enrolled'})
           .eq('id', deviceId)
           .eq('user_id', user.id)
-          .inFilter('status', ['paused', 'stopped']);
+          .inFilter('status', ['paused', 'stopped', 'offline']);
 
       final gateway = await MiningGatewayService(_client).connect(deviceId: deviceId);
       _gateway = gateway;
