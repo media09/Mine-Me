@@ -1,0 +1,29 @@
+services:
+  - type: web
+    name: mine-me-pool-gateway
+    runtime: docker
+    plan: free
+    region: frankfurt
+    dockerfilePath: ./services/pool-gateway/Dockerfile
+    dockerContext: .
+    healthCheckPath: /healthz
+    autoDeploy: true
+    envVars:
+      - key: SUPABASE_URL
+        value: https://mqyqpflamkplhlphrngn.supabase.co
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: MINING_GATEWAY_TOKEN_SECRET
+        sync: false
+      - key: CENTRAL_MONERO_WALLET_ADDRESS
+        sync: false
+      - key: ALLOWED_WEB_ORIGINS
+        value: https://app.sharedboost.com
+      - key: MAX_ACTIVE_WORKERS
+        value: "200"
+      - key: MAX_PENDING_AUTH_CONNECTIONS
+        value: "100"
+      - key: MAX_CONNECTION_ATTEMPTS_PER_MINUTE
+        value: "300"
+      - key: TRUST_PROXY_HEADERS
+        value: "false"
