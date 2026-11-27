@@ -21,6 +21,7 @@ class _HomeScreenState extends State<HomeScreen> {
   List<Map<String, dynamic>> _devices = [];
   BigInt _availableXmr = BigInt.zero;
   BigInt _heldXmr = BigInt.zero;
+  bool _rewardLedgerAvailable = true;
 
   @override
   void initState() {
@@ -76,15 +77,22 @@ class _HomeScreenState extends State<HomeScreen> {
           .select('id, label, worker_code, platform_family, status, intensity_percent, last_seen_at')
           .eq('user_id', user.id).order('created_at');
 
-      final rewardRows = await _client.from('member_reward_ledger')
-          .select('amount, status').eq('member_id', user.id);
-
       var available = BigInt.zero;
       var held = BigInt.zero;
-      for (final row in rewardRows) {
-        final amount = _xmrToAtomic(row['amount']);
-        if (row['status'] == 'available') available += amount;
-        if (row['status'] == 'held') held += amount;
+      var rewardLedgerAvailable = true;
+      try {
+        final rewardRows = await _client.from('member_reward_ledger')
+            .select('amount, status').eq('member_id', user.id);
+        for (final row in rewardRows) {
+          final amount = _xmrToAtomic(row['amount']);
+          if (row['status'] == 'available') available += amount;
+          if (row['status'] == 'held') held += amount;
+        }
+      } catch (_) {
+        // The reward migration is deployed separately after review. Do not
+        // block sign-in, device management or safe client installation while
+        // the ledger schema is not yet present in the linked project.
+        rewardLedgerAvailable = false;
       }
 
       if (!mounted) return;
@@ -93,6 +101,7 @@ class _HomeScreenState extends State<HomeScreen> {
         _devices = List<Map<String, dynamic>>.from(devices);
         _availableXmr = available;
         _heldXmr = held;
+        _rewardLedgerAvailable = rewardLedgerAvailable;
       });
     } catch (error) {
       if (mounted) setState(() => _error = error.toString());
@@ -277,6 +286,9 @@ class _HomeScreenState extends State<HomeScreen> {
             ],
           ),
           const SizedBox(height: 12),
+          if (!_rewardLedgerAvailable)
+            const Text('Le registre des récompenses sera disponible après la mise à jour sécurisée du serveur.',
+              style: TextStyle(color: Colors.orangeAccent, fontSize: 11)),
           const Text(
             'Tous les membres contribuent au même wallet HashVault. Ces montants sont des crédits internes calculés à partir des parts acceptées et des paiements centraux confirmés. Aucun wallet individuel n’est créé.',
             style: TextStyle(color: Colors.white54, fontSize: 11, height: 1.5),
