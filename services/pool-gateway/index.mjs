@@ -10,6 +10,7 @@ import {
   verifySessionToken,
   validateShareMessage,
   validateTelemetryMessage,
+  poolTargetDifficulty,
 } from "./lib/protocol.mjs";
 
 const env = process.env;
@@ -234,7 +235,7 @@ async function recordShare(session, pending, accepted, reason) {
     device_id: session.claims.deviceId,
     pool_share_id: poolShareRef,
     accepted,
-    difficulty: null,
+    difficulty: accepted ? pending.difficulty : null,
     verified_at: new Date().toISOString(),
   });
 
@@ -256,6 +257,7 @@ function parseProxyJob(session, rawJob) {
   const fixedNonceByte = job.blob.slice((nonceOffset + 3) * 2, (nonceOffset + 4) * 2).toLowerCase();
   if (!/^[0-9a-f]{2}$/.test(fixedNonceByte)) throw new Error("The pool proxy did not assign a worker nonce byte.");
   session.currentJobId = job.jobId;
+  session.currentJobDifficulty = poolTargetDifficulty(job.target);
   session.fixedNonceByte = fixedNonceByte;
   session.submittedNonces.clear();
   return job;
@@ -613,6 +615,7 @@ async function handleBrowserMessage(session, rawData) {
   session.pendingShares.set(requestId, {
     jobId: message.jobId,
     nonce: message.nonce.toLowerCase(),
+    difficulty: session.currentJobDifficulty,
   });
 
   const submit = {
