@@ -5,11 +5,13 @@ import 'dart:typed_data';
 import 'randomx_engine.dart';
 
 class NativeRandomXWorker {
-  NativeRandomXWorker._(this._isolate, this._commands, this._events);
+  NativeRandomXWorker._(this._isolate, this._commands, this._events, this._receive);
 
   final Isolate _isolate;
   final SendPort _commands;
   final Stream<Map<String, dynamic>> _events;
+  final ReceivePort _receive;
+  bool _closed = false;
   Stream<Map<String, dynamic>> get events => _events;
 
   static Future<NativeRandomXWorker> start({
@@ -37,7 +39,7 @@ class NativeRandomXWorker {
     final eventStream = receive.cast<dynamic>()
         .where((value) => value is Map)
         .map((value) => Map<String, dynamic>.from(value as Map));
-    return NativeRandomXWorker._(isolate, first, eventStream);
+    return NativeRandomXWorker._(isolate, first, eventStream, receive);
   }
 
   void setJob(Map<String, dynamic> job) => _commands.send({'type': 'job', 'job': job});
@@ -45,9 +47,12 @@ class NativeRandomXWorker {
   void pause() => _commands.send({'type': 'pause'});
   void resume() => _commands.send({'type': 'resume'});
   Future<void> stop() async {
+    if (_closed) return;
+    _closed = true;
     _commands.send({'type': 'stop'});
     await Future<void>.delayed(const Duration(milliseconds: 150));
     _isolate.kill(priority: Isolate.immediate);
+    _receive.close();
   }
 }
 
