@@ -22,6 +22,7 @@ class _HomeScreenState extends State<HomeScreen> {
   BigInt _availableXmr = BigInt.zero;
   BigInt _heldXmr = BigInt.zero;
   bool _rewardLedgerAvailable = true;
+  List<Map<String, dynamic>> _diagnosticEvents = [];
 
   @override
   void initState() {
@@ -77,6 +78,23 @@ class _HomeScreenState extends State<HomeScreen> {
           .select('id, label, worker_code, platform_family, status, intensity_percent, last_seen_at')
           .eq('user_id', user.id).order('created_at');
 
+      var diagnosticEvents = <Map<String, dynamic>>[];
+      try {
+        final deviceIds = List<Map<String, dynamic>>.from(devices)
+            .map((device) => device['id'] as String)
+            .toList();
+        if (deviceIds.isNotEmpty) {
+          final events = await _client.from('device_events')
+              .select('device_id, event_type, details, created_at')
+              .inFilter('device_id', deviceIds)
+              .order('created_at', ascending: false)
+              .limit(12);
+          diagnosticEvents = List<Map<String, dynamic>>.from(events);
+        }
+      } catch (_) {
+        // Diagnostics are optional and must not block account/device access.
+      }
+
       var available = BigInt.zero;
       var held = BigInt.zero;
       var rewardLedgerAvailable = true;
@@ -99,6 +117,7 @@ class _HomeScreenState extends State<HomeScreen> {
       setState(() {
         _profile = profile;
         _devices = List<Map<String, dynamic>>.from(devices);
+        _diagnosticEvents = diagnosticEvents;
         _availableXmr = available;
         _heldXmr = held;
         _rewardLedgerAvailable = rewardLedgerAvailable;
@@ -205,6 +224,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: CircularProgressIndicator(),
               )),
             ..._devices.map(_deviceCard),
+            _diagnosticsCard(),
             if (!_busy && _devices.isEmpty)
               const Padding(
                 padding: EdgeInsets.symmetric(vertical: 18),
@@ -225,6 +245,122 @@ class _HomeScreenState extends State<HomeScreen> {
               'Le minage ne démarre qu’après validation du serveur, du compte, du consentement et de la pause globale. Sur Android, une notification persistante accompagne chaque session active.',
               style: TextStyle(color: Colors.white54, fontSize: 12, height: 1.6),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _diagnosticsCard() {
+    String eventLabel(String event) {
+      const labels = {
+        'started': 'Démarrage demandé',
+        'session_requested': 'Demande de session envoyée',
+        'session_http_error': 'Échec de l’API de session',
+        'session_authorized': 'Session autorisée',
+        'gateway_connected': 'Passerelle connectée',
+        'gateway_ready': 'Passerelle authentifiée',
+        'gateway_error': 'Erreur de passerelle',
+        'pool_job_received': 'Travail reçu du pool',
+        'randomx_initializing': 'Initialisation RandomX',
+        'randomx_ready': 'Moteur RandomX prêt',
+        'randomx_error': 'Erreur RandomX',
+        'share_submitted': 'Part transmise',
+        'share_accepted': 'Part acceptée par le pool',
+        'share_rejected': 'Part refusée par le pool',
+        'worker_disconnected': 'Déconnexion du mineur',
+        'paused': 'Minage mis en pause',
+        'stopped': 'Minage arrêté',
+        'error': 'Erreur',
+      };
+      return labels[event] ?? event;
+    }
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Expanded(
+                  child: Text('TRAÇABILITÉ DU MINAGE',
+                    style: TextStyle(
+                      color: Color(0xFFADFF65),
+                      fontSize: 11,
+                      letterSpacing: 1.3,
+                    )),
+                ),
+                IconButton(
+                  tooltip: 'Actualiser les diagnostics',
+                  onPressed: _busy ? null : _load,
+                  icon: const Icon(Icons.refresh, size: 18),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            const Text(
+              'Historique des étapes, connexions et erreurs récentes de vos appareils.',
+              style: TextStyle(color: Colors.white54, fontSize: 11),
+            ),
+            const SizedBox(height: 10),
+            if (_diagnosticEvents.isEmpty)
+              const Text(
+                'Aucun événement de minage enregistré pour le moment.',
+                style: TextStyle(color: Colors.white60, fontSize: 12),
+              )
+            else
+              ..._diagnosticEvents.take(8).map((event) {
+                final details = event['details'] is Map
+                    ? Map<String, dynamic>.from(event['details'] as Map)
+                    : <String, dynamic>{};
+                final eventType = event['event_type'] as String? ?? 'event';
+                final trace = details['trace_id']?.toString();
+                final code = details['error_code']?.toString();
+                final status = details['http_status']?.toString();
+                final createdAt = DateTime.tryParse(
+                  event['created_at']?.toString() ?? '',
+                )?.toLocal();
+                final time = createdAt == null
+                    ? 'Date inconnue'
+                    : '${createdAt.day.toString().padLeft(2, '0')}/${createdAt.month.toString().padLeft(2, '0')} '
+                      '${createdAt.hour.toString().padLeft(2, '0')}:${createdAt.minute.toString().padLeft(2, '0')}:${createdAt.second.toString().padLeft(2, '0')}';
+                final isError = eventType.contains('error') ||
+                    eventType == 'session_http_error';
+                return Padding(
+                  padding: const EdgeInsets.only(top: 9),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(
+                        isError ? Icons.error_outline : Icons.check_circle_outline,
+                        size: 16,
+                        color: isError ? Colors.orangeAccent : const Color(0xFFADFF65),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(eventLabel(eventType),
+                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                            Text(
+                              [
+                                time,
+                                if (code != null) code,
+                                if (status != null) 'HTTP $status',
+                                if (trace != null) 'Trace ${trace.length > 10 ? trace.substring(0, 10) : trace}',
+                              ].join(' · '),
+                              style: const TextStyle(color: Colors.white54, fontSize: 10),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }),
           ],
         ),
       ),
