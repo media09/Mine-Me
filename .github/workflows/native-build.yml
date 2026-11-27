@@ -112,7 +112,8 @@ jobs:
       - name: Create macOS disk image
         if: matrix.target == 'macos'
         run: |
-          mkdir -p build/installers
+          mkdir -p build/installers build/macos/Build/Products/Release/mine_me_native.app/Contents/Resources
+          cp THIRD_PARTY_NOTICES.md build/macos/Build/Products/Release/mine_me_native.app/Contents/Resources/
           hdiutil create -volname MINE-ME -srcfolder build/macos/Build/Products/Release/mine_me_native.app -ov -format UDZO build/installers/MINE-ME-macOS.dmg
       - name: Upload Android APK
         if: matrix.target == 'apk'
@@ -129,7 +130,7 @@ jobs:
           name: mine-me-windows-desktop
           path: apps/native/build/installers/MineMe-Setup-x64.exe
           if-no-files-found: error
-          retention-days: 14
+          retention-days: 30
       - name: Upload Linux bundle
         if: matrix.target == 'linux'
         uses: actions/upload-artifact@v4
