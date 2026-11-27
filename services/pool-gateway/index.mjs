@@ -69,7 +69,8 @@ const sessions = new Set();
 
 function log(event, fields = {}) {
   // Never log session tokens, e-mail addresses, wallet addresses or secrets.
-  process.stdout.write(JSON.stringify({ at: new Date().toISOString(), event, ...fields }) + "\n");
+  const session = fields.deviceId ? activeDevices.get(fields.deviceId) : null;
+  process.stdout.write(JSON.stringify({ at: new Date().toISOString(), event, traceId: fields.traceId || session?.claims?.traceId || null, ...fields }) + "\n");
 }
 
 function send(ws, message) {
