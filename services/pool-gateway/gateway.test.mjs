@@ -7,6 +7,7 @@ import {
   buildProxyLogin,
   normalisePoolJob,
   normaliseProxyLine,
+  poolTargetDifficulty,
   signSessionToken,
   validateShareMessage,
   validateTelemetryMessage,
@@ -128,4 +129,11 @@ test("browser telemetry rejects impossible, malformed or oversized values", () =
   assert.equal(validateTelemetryMessage({ type: "telemetry", hashesPerSecond: 5, hashesComputed: 5, sampleSeconds: 0 }), null);
   assert.equal(validateTelemetryMessage({ type: "telemetry", hashesPerSecond: 5, hashesComputed: 5, sampleSeconds: 61 }), null);
   assert.equal(validateTelemetryMessage({ type: "submit", hashesPerSecond: 5, hashesComputed: 5, sampleSeconds: 2 }), null);
+});
+
+test("pool target difficulty is derived using the RandomX little-endian target encoding", () => {
+  assert.equal(poolTargetDifficulty("ffffffff"), "1");
+  assert.equal(poolTargetDifficulty("ffffffffffffffff"), "1");
+  assert.equal(poolTargetDifficulty("01000000"), "4294967295");
+  assert.throws(() => poolTargetDifficulty("00000000"));
 });
