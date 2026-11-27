@@ -133,7 +133,7 @@ class _HomeScreenState extends State<HomeScreen> {
             if (_error != null) Text(_error!, style: const TextStyle(color: Color(0xFFFF8A80))),
             _referralCard(),
             const SizedBox(height: 24),
-            const Text('Le moteur natif de calcul n’est pas encore activé dans cette version. Aucun travail RandomX ne démarre depuis cet écran. La sécurité de la plateforme reste prioritaire.',
+            const Text('Le minage ne démarre qu’après validation du serveur, du compte, du consentement et de la pause globale. Sur Android, une notification persistante accompagne chaque session active.',
               style: TextStyle(color: Colors.white54, fontSize: 12, height: 1.6)),
           ],
         ),
