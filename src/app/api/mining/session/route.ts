@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
     const origin = request.headers.get("origin");
     const requestOrigin = new URL(request.url).origin;
     const authorization = request.headers.get("authorization");
-    const bearerToken = authorization?.match(/^Bearer\\s+([^\\s]+)$/i)?.[1] ?? null;
+    const bearerToken = authorization?.match(/^Bearer\s+([^\s]+)$/i)?.[1] ?? null;
 
     // Browser requests must be same-origin. Native clients have no Origin header
     // and authenticate with their short-lived Supabase access token instead.
@@ -112,7 +112,7 @@ export async function POST(request: NextRequest) {
 
     const settings = new Map((settingsResult.data ?? []).map((row) => [row.key, row.value]));
     if (settings.get("mining_enabled") !== true) {
-      return jsonError("Le minage du navigateur n’est pas encore activé par l’administration.", 409);
+      return jsonError("Le minage n’est pas encore activé par l’administration.", 409);
     }
     if (settings.get("global_emergency_pause") !== false) {
       return jsonError("La pause de sécurité globale est activée.", 409);
@@ -131,7 +131,7 @@ export async function POST(request: NextRequest) {
         .from("devices")
         .update({ status: "enrolled", last_seen_at: new Date().toISOString() })
         .eq("id", device.id)
-        .eq("user_id", user.id)
+        .eq("user_id", userId)
         .eq("status", "offline")
         .select("id, status")
         .maybeSingle();
@@ -146,7 +146,7 @@ export async function POST(request: NextRequest) {
     const payload = {
       iss: TOKEN_ISSUER,
       aud: TOKEN_AUDIENCE,
-      sub: user.id,
+      sub: userId,
       deviceId: device.id,
       workerCode: device.worker_code,
       consentVersion: CONSENT_VERSION,
