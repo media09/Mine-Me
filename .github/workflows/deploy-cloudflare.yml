@@ -1,0 +1,52 @@
+name: MINE-ME Cloudflare deployment
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mine-me-cloudflare-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Build and deploy MINE-ME Worker
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Type check
+        run: npm run typecheck
+
+      - name: Test mining protocol
+        run: npm test
+
+      - name: Test pool gateway protocol
+        run: npm run test:gateway
+
+      - name: Build Cloudflare Worker
+        run: npm run build:cloudflare
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://mqyqpflamkplhlphrngn.supabase.co
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_9jRqX5-oP2nKA13G8ADBeg_OoRc4eFc
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: sb_publishable_9jRqX5-oP2nKA13G8ADBeg_OoRc4eFc
+          NEXT_PUBLIC_APP_URL: https://mine-me.671btweb.workers.dev/minime
+
+      - name: Deploy Worker
+        run: npx wrangler deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: 6bafeba42574a70fbd8133c88691bdee
