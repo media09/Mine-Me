@@ -93,7 +93,7 @@ class NativeMiningController extends ChangeNotifier {
 
       _stage = 'session_request';
       _record('session_requested', {'api': 'mining_session'});
-      final gateway = await MiningGatewayService(_client).connect(deviceId: deviceId);
+      final gateway = await MiningGatewayService(_client).connect(deviceId: deviceId, traceId: _traceId!);
       _gateway = gateway;
       _stage = 'gateway_websocket';
       _record('gateway_connected');
