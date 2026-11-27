@@ -91,6 +91,25 @@ export function normalisePoolJob(job) {
   return { jobId, blob, target, seedHash, algorithm };
 }
 
+export function poolTargetDifficulty(targetHex) {
+  if (typeof targetHex !== "string" || !/^(?:[0-9a-fA-F]{8}|[0-9a-fA-F]{16})$/.test(targetHex)) {
+    throw new Error("Invalid RandomX share target.");
+  }
+  const bytes = Buffer.from(targetHex, "hex");
+  const max64 = (1n << 64n) - 1n;
+  let target;
+  if (bytes.length === 4) {
+    const compact = BigInt(bytes.readUInt32LE(0));
+    if (compact === 0n) throw new Error("RandomX share target cannot be zero.");
+    target = max64 / (0xffff_ffffn / compact);
+  } else {
+    target = bytes.readBigUInt64LE(0);
+  }
+  if (target === 0n) throw new Error("RandomX share target cannot be zero.");
+  const difficulty = max64 / target;
+  return difficulty.toString();
+}
+
 export function validateShareMessage(message, currentJobId) {
   if (!message || message.type !== "submit") return false;
   if (typeof message.jobId !== "string" || message.jobId !== currentJobId) return false;
