@@ -65,3 +65,24 @@ After a controlled deployment, `GET /mineme/healthz` reports whether the
 proxy and Gateway child processes started. A healthy response does not prove
 HashVault login, accepted shares, or reward accounting. Those require separate
 controlled tests while global mining remains disabled for members.
+
+
+## Safe upstream diagnostic (no mining)
+
+After the Gateway and proxy are running, open the cPanel Terminal in the existing
+`/home/sharfys/mineme` application root and run:
+
+```bash
+node services/pool-gateway/diagnose-upstream.mjs
+```
+
+This opens one temporary loopback connection to the local proxy, sends the same
+Stratum login shape used by the Gateway, verifies that the proxy accepts the
+login, negotiates NiceHash nonce splitting, and returns an initial pool job.
+It immediately disconnects and submits **zero shares**. It does not enable
+member mining or change Supabase settings.
+
+Success is a JSON line with `"ok":true`, `"proxyLogin":"accepted"`,
+`"nicehashNonceSplitting":true`, `"initialPoolJob":true`, and
+`"submittedShares":0`. A failure returns a sanitized reason code; do not
+publish wallet addresses, credentials, or raw proxy logs.
