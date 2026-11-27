@@ -19,6 +19,10 @@ Gateway as child processes, binds both only to loopback, and forwards the
 - Copy the complete `services/pool-gateway/` directory, including `lib/`.
 - Copy `services/pool-proxy/config.example.json` to the same relative path.
 - Place the official Linux x64 `vltrig-proxy` executable in `bin/vltrig-proxy`.
+  Use release `v6.27.0.6` and verify SHA-256
+  `e68491f2e4a8fcd41416db5f6f8fb676d0634442c1e1ecfb5c8b98ecde71f56b`
+  against the GitHub release asset metadata before deployment.
+  Official release: https://github.com/HashVault/vltrig-proxy/releases/tag/v6.27.0.6
 
 Do not replace the current app until the files and environment are ready.
 Use cPanel Node.js Selector's **Run NPM Install** after placing package.json.
