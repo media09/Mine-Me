@@ -251,7 +251,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
               ]),
               Slider(
-                value: ((device['intensity_percent'] as num?)?.toDouble() ?? 20).clamp(1, 80),
+                value: ((device['intensity_percent'] as num?)?.toDouble() ?? 20).clamp(1, 80).toDouble(),
                 min: 1, max: 80, divisions: 79,
                 onChanged: (value) => setState(() => device['intensity_percent'] = value.round()),
                 onChangeEnd: (value) => _saveIntensity(deviceId, value.round()),
