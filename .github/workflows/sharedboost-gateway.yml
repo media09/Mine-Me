@@ -31,7 +31,7 @@ jobs:
           node-version: 22
           cache: npm
       - name: Install locked dependencies
-        run: npm ci
+        run: npm ci --workspace=@mine-me/pool-gateway --include-workspace-root=false
       - name: Check Passenger adapter syntax
         run: node --check services/pool-gateway/passenger-app.cjs
       - name: Run Gateway protocol tests
