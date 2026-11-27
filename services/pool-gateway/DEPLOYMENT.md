@@ -96,3 +96,21 @@ The gateway health endpoint is `http://127.0.0.1:8081/healthz`; keep it private 
 13. Configure monitoring for pending-auth caps, per-IP connection throttles, proxy reconnects, pool rejection rates and DB cleanup failures.
 
 Keep `mining_enabled=false` and `global_emergency_pause=true` until every item above is complete. A configured gateway URL is not proof that the proxy or upstream pool is healthy.
+
+
+## One central HashVault wallet and member reward accounting
+
+MINE-ME uses exactly one platform-owned Monero receiving address for every member and every device. The VLTRig Proxy configuration has a primary HashVault endpoint and a failover endpoint; both entries must use the same platform wallet address and the same central worker identity. Never substitute a member's personal address.
+
+After the platform owner has supplied and verified the public Monero receiving address, configure the singleton record in the Supabase SQL editor:
+
+```sql
+insert into public.central_wallet_identity (id, wallet_address)
+values (true, 'REPLACE_WITH_THE_PLATFORM_PUBLIC_MONERO_ADDRESS');
+```
+
+Only the public receiving address belongs in this record. Never store a mnemonic, seed, private spend key or private view key in Supabase, the gateway, the proxy configuration, or a client application.
+
+For each confirmed HashVault payout received by this one wallet, the trusted reconciliation process records the payout in `public.pool_payouts`, including the actual contribution window associated with the pool's PPLNS accounting. It then calls `private.allocate_central_pool_reward_for_window` with the payout transaction reference and that verified window. The function aggregates pool-accepted share difficulty from `mining_share_ledger` by member and posts idempotent internal credits to `member_reward_ledger`.
+
+Do not infer a PPLNS window from a device's hashrate, a client-reported share, or an arbitrary clock interval. If the pool cannot establish the correct contribution window or payout amount, keep the payout unreconciled and do not credit member balances. Member XMR balances are internal platform accounting entries; they are not separate HashVault wallets or automatic on-chain withdrawals.
