@@ -25,11 +25,14 @@ create table if not exists public.pool_payouts (
   asset text not null default 'XMR' check (asset = 'XMR'),
   gross_amount numeric(30, 12) not null check (gross_amount > 0),
   network_fee numeric(30, 12) not null default 0 check (network_fee >= 0),
+  share_window_start timestamptz,
+  share_window_end timestamptz,
   received_at timestamptz not null,
   pool_height bigint,
   source text not null default 'hashvault_api' check (source in ('hashvault_api', 'admin_reconciliation')),
   created_at timestamptz not null default now(),
-  check (network_fee <= gross_amount)
+  check (network_fee <= gross_amount),
+  check (share_window_start is null or share_window_end is null or share_window_start < share_window_end)
 );
 
 create table if not exists public.reward_distribution_batches (
@@ -40,8 +43,11 @@ create table if not exists public.reward_distribution_batches (
   total_contribution_weight numeric(38, 12) not null check (total_contribution_weight > 0),
   allocated_amount numeric(30, 12) not null check (allocated_amount >= 0),
   platform_reserve_amount numeric(30, 12) not null check (platform_reserve_amount >= 0),
+  share_window_start timestamptz not null,
+  share_window_end timestamptz not null,
   status text not null default 'posted' check (status in ('posted', 'reversed')),
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  check (share_window_start < share_window_end)
 );
 
 -- This is an internal accounting ledger, not a Monero wallet or direct pool payout.
@@ -157,12 +163,15 @@ begin
   end if;
 
   insert into public.reward_distribution_batches (
-    payout_id, total_contribution_weight, allocated_amount, platform_reserve_amount
+    payout_id, total_contribution_weight, allocated_amount, platform_reserve_amount,
+    share_window_start, share_window_end
   ) values (
     v_payout.id,
     v_total_weight,
     v_payout.gross_amount - v_payout.network_fee,
-    0
+    0,
+    v_payout.share_window_start,
+    v_payout.share_window_end
   )
   returning id into v_batch_id;
 
@@ -200,3 +209,90 @@ grant execute on function private.allocate_central_pool_reward(text, jsonb)
 
 -- No participant can create a wallet, insert a payout, or credit their own ledger.
 -- There is deliberately no member_wallets table and no member pool-address field.
+
+-- This is the only public-to-service entry point for reward posting. Contribution
+-- weights are aggregated from the server-side ledger of pool-accepted shares.
+create or replace function private.allocate_central_pool_reward_for_window(
+  p_transaction_ref text,
+  p_window_start timestamptz,
+  p_window_end timestamptz
+)
+returns uuid
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_contributions jsonb;
+  v_batch_id uuid;
+begin
+  if coalesce(auth.role(), '') <> 'service_role' then
+    raise exception 'Trusted reconciliation service required.';
+  end if;
+  if p_window_start is null or p_window_end is null or p_window_start >= p_window_end then
+    raise exception 'A valid pool contribution window is required.';
+  end if;
+
+  update public.pool_payouts
+  set share_window_start = p_window_start,
+      share_window_end = p_window_end
+  where transaction_ref = p_transaction_ref
+    and share_window_start is null
+    and share_window_end is null;
+
+  if not exists (
+    select 1 from public.pool_payouts
+    where transaction_ref = p_transaction_ref
+      and share_window_start = p_window_start
+      and share_window_end = p_window_end
+  ) then
+    raise exception 'Central payout not found or already assigned to a different contribution window.';
+  end if;
+
+  select jsonb_agg(jsonb_build_object(
+    'member_id', contribution.member_id,
+    'weight', contribution.total_difficulty,
+    'accepted_share_count', contribution.accepted_share_count
+  ))
+  into v_contributions
+  from (
+    select
+      d.user_id as member_id,
+      sum(s.difficulty)::numeric(38, 12) as total_difficulty,
+      count(*)::bigint as accepted_share_count
+    from public.mining_share_ledger s
+    join public.devices d on d.id = s.device_id
+    join public.profiles p on p.id = d.user_id
+    where s.accepted = true
+      and s.difficulty is not null
+      and s.difficulty > 0
+      and s.verified_at >= p_window_start
+      and s.verified_at < p_window_end
+      and p.account_status = 'active'
+    group by d.user_id
+  ) contribution;
+
+  if v_contributions is null or jsonb_array_length(v_contributions) = 0 then
+    raise exception 'No pool-accepted contribution exists in the specified window.';
+  end if;
+
+  v_batch_id := private.allocate_central_pool_reward(p_transaction_ref, v_contributions);
+
+  update public.reward_distribution_batches
+  set share_window_start = p_window_start,
+      share_window_end = p_window_end
+  where id = v_batch_id;
+
+  return v_batch_id;
+end;
+$$;
+
+revoke all on function private.allocate_central_pool_reward_for_window(text, timestamptz, timestamptz)
+  from public, anon, authenticated, service_role;
+grant execute on function private.allocate_central_pool_reward_for_window(text, timestamptz, timestamptz)
+  to service_role;
+
+-- The raw JSON allocator is internal to the window aggregator; clients and
+-- reconciliation workers cannot bypass the accepted-share ledger.
+revoke all on function private.allocate_central_pool_reward(text, jsonb)
+  from public, anon, authenticated, service_role;
