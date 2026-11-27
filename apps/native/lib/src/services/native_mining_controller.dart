@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'android_mining_service.dart';
 import 'mining_gateway_service.dart';
 import 'native_randomx_worker.dart';
 
@@ -58,12 +59,14 @@ class NativeMiningController extends ChangeNotifier {
 
       final gateway = await MiningGatewayService(_client).connect(deviceId: deviceId);
       _gateway = gateway;
+      await AndroidMiningService.start();
       _setState(NativeMiningState.connecting);
       _gatewaySubscription = gateway.messages.listen(
         _onGatewayMessage,
         onError: (Object error) => _fail('Connexion au service de calcul interrompue.'),
         onDone: () {
           unawaited(_worker?.stop());
+          unawaited(AndroidMiningService.stop());
           _worker = null;
           if (state == NativeMiningState.running ||
               state == NativeMiningState.initialising ||
@@ -151,6 +154,7 @@ class NativeMiningController extends ChangeNotifier {
           hashesComputed: message['hashesComputed'] as int,
           sampleSeconds: (message['sampleSeconds'] as num).toDouble(),
         );
+        unawaited(AndroidMiningService.update('Calcul en cours · ${hashesPerSecond.toStringAsFixed(1)} H/s'));
         _notify();
         break;
       case 'paused':
@@ -173,6 +177,7 @@ class NativeMiningController extends ChangeNotifier {
     _setState(NativeMiningState.stopping);
     _worker?.pause();
     _gateway?.pause();
+    unawaited(AndroidMiningService.stop());
   }
 
   void stop() {
@@ -180,6 +185,7 @@ class NativeMiningController extends ChangeNotifier {
     _setState(NativeMiningState.stopping);
     _worker?.stop();
     _gateway?.stop();
+    unawaited(AndroidMiningService.stop());
   }
 
   Future<void> disposeSession() async {
@@ -187,6 +193,7 @@ class NativeMiningController extends ChangeNotifier {
     await _gatewaySubscription?.cancel();
     await _worker?.stop();
     await _gateway?.close();
+    await AndroidMiningService.stop();
     _worker = null;
     _gateway = null;
     activeDeviceId = null;
@@ -197,6 +204,7 @@ class NativeMiningController extends ChangeNotifier {
     errorMessage = message;
     _worker?.stop();
     _gateway?.close();
+    AndroidMiningService.stop();
     _worker = null;
     _gateway = null;
     _setState(NativeMiningState.error);
