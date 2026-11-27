@@ -34,6 +34,8 @@ jobs:
         run: npm ci --workspace=@mine-me/pool-gateway --include-workspace-root=false
       - name: Check Passenger adapter syntax
         run: node --check services/pool-gateway/passenger-app.cjs
+      - name: Check safe upstream diagnostic syntax
+        run: node --check services/pool-gateway/diagnose-upstream.mjs
       - name: Run Gateway protocol tests
         run: npm run test:gateway
       - name: Assemble SharedBoost deployment bundle
@@ -44,6 +46,7 @@ jobs:
           cp services/pool-gateway/passenger-app.cjs dist/sharedboost/app.js
           cp services/pool-gateway/sharedboost-package.json dist/sharedboost/package.json
           cp services/pool-gateway/index.mjs dist/sharedboost/services/pool-gateway/index.mjs
+          cp services/pool-gateway/diagnose-upstream.mjs dist/sharedboost/services/pool-gateway/diagnose-upstream.mjs
           cp services/pool-gateway/lib/*.mjs dist/sharedboost/services/pool-gateway/lib/
           cp services/pool-proxy/config.example.json dist/sharedboost/services/pool-proxy/config.example.json
           cp services/pool-gateway/SHAREDBOOST-PASSENGER.md dist/sharedboost/README.md
