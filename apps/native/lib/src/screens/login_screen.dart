@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'register_screen.dart';
+
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
   @override
@@ -81,8 +83,16 @@ class _LoginScreenState extends State<LoginScreen> {
                       : const Text('Se connecter'),
                   ),
                 ),
-                const SizedBox(height: 20),
-                const Text('Les inscriptions et le parrainage se font depuis le portail MINE-ME.',
+                const SizedBox(height: 12),
+                OutlinedButton.icon(
+                  onPressed: _busy ? null : () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(builder: (_) => const RegisterScreen()),
+                  ),
+                  icon: const Icon(Icons.person_add_alt_1),
+                  label: const Text('Créer un compte'),
+                ),
+                const SizedBox(height: 12),
+                const Text('L’inscription nécessite un code d’invitation valide.',
                   textAlign: TextAlign.center, style: TextStyle(color: Colors.white54, fontSize: 12)),
               ],
             ),
