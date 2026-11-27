@@ -135,10 +135,25 @@ class _HomeScreenState extends State<HomeScreen> {
       _error = null;
     });
     try {
-      await DeviceService(_client).enroll();
+      final deviceId = await DeviceService(_client).enroll();
       await _load();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Appareil associé avec succès · ${deviceId.substring(0, 8).toUpperCase()}'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
     } catch (error) {
-      if (mounted) setState(() => _error = error.toString());
+      if (mounted) {
+        setState(() => _error = error.toString());
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Association impossible : $error'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
       if (mounted) setState(() => _busy = false);
     }
   }
