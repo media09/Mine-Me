@@ -114,3 +114,12 @@ Only the public receiving address belongs in this record. Never store a mnemonic
 For each confirmed HashVault payout received by this one wallet, the trusted reconciliation process records the payout in `public.pool_payouts`, including the actual contribution window associated with the pool's PPLNS accounting. It then calls `private.allocate_central_pool_reward_for_window` with the payout transaction reference and that verified window. The function aggregates pool-accepted share difficulty from `mining_share_ledger` by member and posts idempotent internal credits to `member_reward_ledger`.
 
 Do not infer a PPLNS window from a device's hashrate, a client-reported share, or an arbitrary clock interval. If the pool cannot establish the correct contribution window or payout amount, keep the payout unreconciled and do not credit member balances. Member XMR balances are internal platform accounting entries; they are not separate HashVault wallets or automatic on-chain withdrawals.
+
+
+### Admin payout reconciliation endpoint
+
+The Next.js server exposes `POST /api/admin/mining/payouts` for a platform admin to record a payout only after confirming it arrived at the single central wallet. The route uses the server-only `SUPABASE_SERVICE_ROLE_KEY`; it is never returned to the app.
+
+Required JSON fields are `transactionRef`, `grossAmount`, `networkFee`, `receivedAt`, `shareWindowStart` and `shareWindowEnd`. `poolHeight` is optional. Amounts are decimal XMR strings with up to 12 fractional digits. The route rejects duplicate transaction references with conflicting data, checks the singleton central-wallet record, and calls the service-role-only reconciliation RPC. If no verified accepted shares exist for the supplied window, the payout stays recorded but unallocated for later review.
+
+The admin must use the actual contribution window supported by the pool's payout/block accounting. Do not guess the window. The endpoint is a manual verification step, not an automatic HashVault API importer.
