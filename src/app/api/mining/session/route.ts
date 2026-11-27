@@ -1,4 +1,5 @@
 import { createHmac, randomUUID } from "node:crypto";
+import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
@@ -6,7 +7,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const CONSENT_VERSION = "2026-11-19-v1";
-const TOKEN_ISSUER = "mine-me-web";
+const TOKEN_ISSUER = "mine-me-client";
 const TOKEN_AUDIENCE = "mine-me-pool-gateway";
 const TOKEN_TTL_SECONDS = 90;
 
@@ -24,12 +25,39 @@ export async function POST(request: NextRequest) {
   try {
     const origin = request.headers.get("origin");
     const requestOrigin = new URL(request.url).origin;
-    if (!origin || origin !== requestOrigin) {
+    const authorization = request.headers.get("authorization");
+    const bearerToken = authorization?.match(/^Bearer\\s+([^\\s]+)$/i)?.[1] ?? null;
+
+    // Browser requests must be same-origin. Native clients have no Origin header
+    // and authenticate with their short-lived Supabase access token instead.
+    if (origin && origin !== requestOrigin) {
       return jsonError("Origine de requête non autorisée.", 403);
     }
-    const supabase = await createClient();
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError || !user) return jsonError("Vous devez être connecté pour démarrer votre appareil.", 401);
+    if (!bearerToken && !origin) {
+      return jsonError("Authentification requise.", 401);
+    }
+
+    let supabase: Awaited<ReturnType<typeof createClient>>;
+    let userId: string;
+    if (bearerToken) {
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+      if (!supabaseUrl || !supabaseAnonKey) {
+        return jsonError("La configuration d’authentification est incomplète.", 503);
+      }
+      supabase = createSupabaseClient(supabaseUrl, supabaseAnonKey, {
+        global: { headers: { Authorization: `Bearer ${bearerToken}` } },
+        auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+      });
+      const { data, error } = await supabase.auth.getUser(bearerToken);
+      if (error || !data.user) return jsonError("Session membre invalide ou expirée.", 401);
+      userId = data.user.id;
+    } else {
+      supabase = await createClient();
+      const { data, error } = await supabase.auth.getUser();
+      if (error || !data.user) return jsonError("Vous devez être connecté pour démarrer votre appareil.", 401);
+      userId = data.user.id;
+    }
 
     const body = await request.json().catch(() => null) as { deviceId?: unknown } | null;
     if (!body || typeof body.deviceId !== "string" || !/^[0-9a-f-]{36}$/i.test(body.deviceId)) {
@@ -58,12 +86,12 @@ export async function POST(request: NextRequest) {
     const [profileResult, deviceResult, settingsResult] = await Promise.all([
       supabase.from("profiles")
         .select("id, account_status, consent_version, consented_at")
-        .eq("id", user.id)
+        .eq("id", userId)
         .maybeSingle(),
       supabase.from("devices")
         .select("id, user_id, worker_code, status, intensity_percent")
         .eq("id", body.deviceId)
-        .eq("user_id", user.id)
+        .eq("user_id", userId)
         .maybeSingle(),
       supabase.from("platform_settings")
         .select("key, value")
