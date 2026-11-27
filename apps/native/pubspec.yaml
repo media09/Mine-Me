@@ -16,6 +16,7 @@ dependencies:
   web_socket_channel: ^3.0.2
   crypto: ^3.0.6
   ffi: ^2.1.4
+  flutter_foreground_task: ^11.0.3
 dev_dependencies:
   flutter_test:
     sdk: flutter
