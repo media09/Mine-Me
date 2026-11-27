@@ -6,9 +6,11 @@ on:
       - main
       - feature/mine-me-foundation
       - deploy/cloudflare-workers
+      - feature/mine-me-installable-app
   pull_request:
     branches:
       - main
+      - feature/mine-me-installable-app
 
 permissions:
   contents: write
@@ -53,3 +55,24 @@ jobs:
           fi
           git commit -m "chore: lock dependency graph"
           git push
+
+  native-app:
+    name: Flutter native app checks
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/native
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Resolve Flutter dependencies
+        run: flutter pub get
+      - name: Analyze native app
+        run: flutter analyze --fatal-infos
+      - name: Run native app tests
+        run: flutter test
