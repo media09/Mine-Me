@@ -1,6 +1,6 @@
 -- MINE-ME has exactly ONE HashVault Monero wallet for the entire platform.
 -- Members/devices are accounting identities only; they never get pool wallets.
--- This migration is intentionally not applied to production by this development task.
+-- Canonical source for the production migration recorded as version 20261127132644.
 
 create table if not exists public.central_wallet_identity (
   id boolean primary key default true check (id = true),
