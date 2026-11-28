@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - feature/mine-me-installable-app
+    paths:
+      - "apps/native/**"
   workflow_dispatch:
 
 concurrency:
