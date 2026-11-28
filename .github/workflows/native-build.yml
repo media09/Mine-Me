@@ -11,7 +11,7 @@ concurrency:
   cancel-in-progress: true
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
@@ -147,3 +147,50 @@ jobs:
           path: apps/native/build/installers/MINE-ME-macOS.dmg
           if-no-files-found: error
           retention-days: 30
+
+  publish:
+    name: Publish installable downloads
+    needs: build
+    if: github.ref == 'refs/heads/feature/mine-me-installable-app' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Android APK
+        uses: actions/download-artifact@v4
+        with:
+          name: mine-me-android-apk
+          path: release-assets/android
+      - name: Download Windows installer
+        uses: actions/download-artifact@v4
+        with:
+          name: mine-me-windows-desktop
+          path: release-assets/windows
+      - name: Download Linux package
+        uses: actions/download-artifact@v4
+        with:
+          name: mine-me-linux-desktop
+          path: release-assets/linux
+      - name: Download macOS disk image
+        uses: actions/download-artifact@v4
+        with:
+          name: mine-me-macos-desktop
+          path: release-assets/macos
+      - name: Publish GitHub prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_NUMBER: ${{ github.run_number }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+        run: |
+          set -euo pipefail
+          TAG="mine-me-installables-${RUN_NUMBER}-${RUN_ATTEMPT}"
+          test -s release-assets/android/app-release.apk
+          test -s release-assets/windows/MineMe-Setup-x64.exe
+          test -s release-assets/linux/mine-me_0.2.0_amd64.deb
+          test -s release-assets/macos/MINE-ME-macOS.dmg
+          gh release create "${TAG}" \
+            --title "MINE-ME installables build ${RUN_NUMBER}" \
+            --notes "Automated installable build from feature/mine-me-installable-app. This is a prerelease build; production mining remains disabled until server and accounting checks are completed." \
+            --prerelease \
+            release-assets/android/app-release.apk \
+            release-assets/windows/MineMe-Setup-x64.exe \
+            release-assets/linux/mine-me_0.2.0_amd64.deb \
+            release-assets/macos/MINE-ME-macOS.dmg
