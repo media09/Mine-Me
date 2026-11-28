@@ -154,6 +154,8 @@ jobs:
     if: github.ref == 'refs/heads/feature/mine-me-installable-app' && github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout repository for release tag context
+        uses: actions/checkout@v4
       - name: Download Android APK
         uses: actions/download-artifact@v4
         with:
