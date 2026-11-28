@@ -4,6 +4,9 @@
   "main": ".open-next/worker.js",
   "compatibility_date": "2026-11-27",
   "compatibility_flags": ["nodejs_compat"],
+  "vars": {
+    "MINING_GATEWAY_PUBLIC_URL": "wss://app.sharedboost.com/mineme/ws"
+  },
   "assets": {
     "directory": ".open-next/assets",
     "binding": "ASSETS"
