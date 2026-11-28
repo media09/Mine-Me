@@ -47,14 +47,14 @@ Builds require their platform toolchains and are not produced by this source-onl
 
 ## Installers produced by CI
 
-The native build workflow publishes these installable packages after all tests pass:
+After all four platform build jobs pass, CI publishes a GitHub prerelease containing the installable packages. Download the latest prerelease from **[MINE-ME Releases](https://github.com/media09/Mine-Me/releases)**:
 
-- Android: arm64 APK for direct sideloading.
+- Android: arm64 APK for direct sideloading on compatible Android phones.
 - Windows: x64 Setup executable generated with Inno Setup.
 - Linux: amd64 Debian package (`.deb`).
 - macOS: disk image (`.dmg`) containing the application bundle.
 
-CI artifacts are retained for 30 days. Windows and macOS packages are currently unsigned; macOS is not notarized, so the operating system may show an installation warning. Android installation is direct APK sideloading and is not distributed through Google Play.
+The per-run GitHub Actions artifacts are also retained for 30 days. Windows and macOS packages are currently unsigned; macOS is not notarized, so the operating system may show an installation warning. Android installation is direct APK sideloading and is not distributed through Google Play. These are prerelease builds; mining remains disabled until production gateway, accounting and manual configuration checks are complete.
 
 ## Central wallet rule
 
